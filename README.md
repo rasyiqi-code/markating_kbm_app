@@ -1,16 +1,52 @@
-# markating_kbm_app
+# Marketing KBM App
 
-A new Flutter project.
+Platform Penjualan & Pemasaran Internal KBM Group. Aplikasi ini dirancang untuk memudahkan tim marketing dalam mengelola penjualan, katalog produk, dan laporan harian.
 
-## Getting Started
+## Fitur Utama
 
-This project is a starting point for a Flutter application.
+- **Katalog Produk Dinamis**: Menampilkan daftar produk dengan harga dan stok real-time (Support Dark Mode).
+- **Dashboard Admin**: Manajemen produk (Tambah/Edit/Hapus) dan pengaturan global (Bonus, Target).
+- **Link in Bio**: Fitur unik untuk setiap marketer membagikan link personal mereka.
+- **Biometric Login**: Akses cepat dan aman menggunakan sidik jari atau Face ID.
+- **Multi-Platform**: Mendukung Android dan Web (PWA Ready).
 
-A few resources to get you started if this is your first Flutter project:
+## Teknologi
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- **Framework**: Flutter (Dart)
+- **Backend Service**: Firebase (Firestore, Auth, Storage, Hosting)
+- **State Management**: Provider
+- **Storage**: Cloudflare R2 (untuk aset gambar hemat biaya)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Cara Menjalankan
+
+### Persiapan
+
+1.  Pastikan Flutter SDK terinstall.
+2.  Clone repository ini.
+3.  Buat file `.env` di root folder (lihat `.env.example`).
+
+### Menjalankan Aplikasi
+
+```bash
+# Install dependencies
+flutter pub get
+
+# Run (Debug)
+flutter run
+
+# Build Web Release
+flutter build web --release
+
+# Build APK Release
+flutter build apk --release
+```
+
+## Struktur Project
+
+- `lib/src/features`: Fitur-fitur utama (Auth, Catalog, Home, Profile).
+- `lib/src/core`: Komponen inti (Services, Models, Theme, Utils).
+- `assets/`: Gambar dan file statis.
+
+## Kontak
+
+Tim IT KBM Group
