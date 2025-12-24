@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:markating_kbm_app/src/core/services/auth_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
-import 'package:markating_kbm_app/src/core/services/biometric_service.dart'; // Import BiometricService
 import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -20,7 +19,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _isBiometricAvailable = false; // State for biometric button visibility
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -37,21 +35,6 @@ class _LoginScreenState extends State<LoginScreen>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
-    _checkBiometrics(); // Check on load
-  }
-
-  Future<void> _checkBiometrics() async {
-    final biometricService = Provider.of<BiometricService>(
-      context,
-      listen: false,
-    );
-    final available = await biometricService.isBiometricAvailable();
-    final enabled = await biometricService.isBiometricLoginEnabled();
-    if (available && enabled && mounted) {
-      setState(() {
-        _isBiometricAvailable = true;
-      });
-    }
   }
 
   @override
@@ -117,47 +100,6 @@ class _LoginScreenState extends State<LoginScreen>
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _handleBiometricLogin() async {
-    final biometricService = Provider.of<BiometricService>(
-      context,
-      listen: false,
-    );
-
-    // 1. Authenticate with Biometrics
-    final authenticated = await biometricService.authenticate();
-    if (!authenticated) return; // User canceled or failed
-
-    setState(() => _isLoading = true);
-
-    try {
-      // 2. Get Credentials
-      final credentials = await biometricService.getStoredCredentials();
-      if (!mounted) return;
-      if (credentials != null) {
-        final authService = Provider.of<AuthService>(context, listen: false);
-        // 3. Login with stored credentials
-        await authService.signIn(
-          credentials['email']!,
-          credentials['password']!,
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login Biometrik tidak valid atau belum diaktifkan.'),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Biometric Login Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -510,40 +452,6 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                 ),
                               ),
-
-                              if (_isBiometricAvailable) ...[
-                                const SizedBox(height: 16),
-                                OutlinedButton.icon(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : _handleBiometricLogin,
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    side: BorderSide(
-                                      color: AppTheme.primaryColor.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.fingerprint,
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                  label: const Text(
-                                    'Masuk dengan Biometrik',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.primaryColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),

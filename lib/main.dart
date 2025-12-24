@@ -27,7 +27,6 @@ import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart'; // Import dotenv
 import 'package:markating_kbm_app/src/features/notifications/notification_controller.dart';
 import 'package:markating_kbm_app/src/core/services/storage_service.dart';
-import 'package:markating_kbm_app/src/core/services/biometric_service.dart'; // Import BiometricService
 import 'package:markating_kbm_app/src/core/utils/responsive_web_layout.dart';
 import 'package:markating_kbm_app/src/features/splash/splash_screen.dart'; // Splash Screen Import
 
@@ -46,9 +45,6 @@ void main() async {
         Provider<StorageService>(
           create: (_) => StorageService(),
         ), // Register StorageService
-        Provider<BiometricService>(
-          create: (_) => BiometricService(),
-        ), // Register BiometricService
         ChangeNotifierProvider<NotificationController>(
           create: (context) => NotificationController(
             Provider.of<FirestoreService>(context, listen: false),

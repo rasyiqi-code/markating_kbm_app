@@ -41,13 +41,12 @@ class _MainScreenState extends State<MainScreen> {
       ).getUserStream(user.uid),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          // If we can't load user data (e.g. Permission Denied means Zombie Account)
-          // we should force logout to prevent infinite spin.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            // Provider.of<FirestoreService>(context, listen: false).signOut(); // Invalid
-            // Sign out via FirebaseAuth instance directly to clear zombie state
-            FirebaseAuth.instance.signOut();
-          });
+          // If permission denied (likely logout race condition), show loading while AuthWrapper redirects
+          if (snapshot.error.toString().contains('permission-denied')) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
 
           return Scaffold(
             body: Center(

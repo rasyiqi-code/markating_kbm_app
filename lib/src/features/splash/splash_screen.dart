@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:markating_kbm_app/src/core/services/auth_service.dart';
-import 'package:markating_kbm_app/src/features/home/main_screen.dart';
-import 'package:markating_kbm_app/src/features/auth/login_screen.dart';
-import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -37,17 +33,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    final auth = Provider.of<AuthService>(context, listen: false);
-    final user = await auth.getCurrentUserDetails();
-
     if (!mounted) return;
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) =>
-            user != null ? const MainScreen() : const LoginScreen(),
-      ),
-    );
+    Navigator.of(context).pushReplacementNamed('/auth_wrapper');
   }
 
   @override

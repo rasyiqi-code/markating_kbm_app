@@ -5,7 +5,6 @@ import 'package:markating_kbm_app/src/core/models/user_model.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:markating_kbm_app/src/features/admin/image_management_screen.dart';
-import 'package:markating_kbm_app/src/core/services/biometric_service.dart'; // Biometric Import
 import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -158,28 +157,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: 'Informasi Bank',
             subtitle: 'Kelola akun penarikan',
             onTap: () => _showBankSettingsDialog(context),
-          ),
-          const SizedBox(height: 24),
-
-          // Security Section
-          _buildSectionHeader(context, 'Keamanan'),
-          FutureBuilder<bool>(
-            future: Provider.of<BiometricService>(
-              context,
-              listen: false,
-            ).isBiometricLoginEnabled(),
-            builder: (context, snapshot) {
-              final isEnabled = snapshot.data ?? false;
-              return _buildSettingsTile(
-                context,
-                icon: isEnabled
-                    ? Icons.fingerprint
-                    : Icons.fingerprint_outlined,
-                title: 'Login Biometrik',
-                subtitle: isEnabled ? 'Aktif' : 'Tidak Aktif',
-                onTap: () => _handleBiometricToggle(context, isEnabled),
-              );
-            },
           ),
           const SizedBox(height: 24),
 
@@ -683,128 +660,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Hapus Secara Permanen'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _handleBiometricToggle(BuildContext context, bool isEnabled) async {
-    final biometricService = Provider.of<BiometricService>(
-      context,
-      listen: false,
-    );
-
-    if (isEnabled) {
-      // Disable
-      await biometricService.disableBiometricLogin();
-      setState(() {});
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login Biometrik dimatikan.')),
-        );
-      }
-    } else {
-      // Enable - Ask for password first
-      _showEnableBiometricDialog(context);
-    }
-  }
-
-  void _showEnableBiometricDialog(BuildContext parentContext) {
-    final passwordController = TextEditingController();
-    bool obscureText = true;
-
-    showDialog(
-      context: parentContext,
-      builder: (dialogContext) => StatefulBuilder(
-        // Use StatefulBuilder to toggle password visibility
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Aktifkan Biometrik'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Masukkan kata sandi Anda untuk mengaktifkan login biometrik.',
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: passwordController,
-                  obscureText: obscureText,
-                  decoration: InputDecoration(
-                    labelText: 'Kata Sandi',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscureText ? Icons.visibility : Icons.visibility_off,
-                      ),
-                      onPressed: () =>
-                          setState(() => obscureText = !obscureText),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final password = passwordController.text;
-                  if (password.isEmpty) return;
-
-                  // Verify Password by re-authenticating or using a quick check?
-                  // Since we don't have a direct "verifyPassword" method without logging in,
-                  // we can try re-authenticating with the auth service or just accept it if currently logged in.
-                  // BETTER: Re-authenticate to ensure security.
-
-                  // Verify Password by re-authenticating or using a quick check?
-                  Navigator.pop(dialogContext); // Close dialog first
-
-                  try {
-                    // Re-login to verify credentials (this is a secure way to confirm ownership before saving creds)
-                    // Note: This might sign them out if it fails?
-                    // Safe approach: We trust the user knows their password if they just typed it.
-                    // But to be proper, we should verify.
-
-                    // Since re-login might disrupt the session, let's just save it.
-                    // If they enter wrong password, biometric login will fail next time.
-                    // Risk: User enters typo, next login fails.
-                    // Ideally we verify.
-                    // For now, let's just save to keep it simple as per "MVP".
-
-                    await Provider.of<BiometricService>(
-                      parentContext,
-                      listen: false,
-                    ).enableBiometricLogin(_currentUser?.email ?? '', password);
-
-                    if (parentContext.mounted) {
-                      ScaffoldMessenger.of(parentContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('Login Biometrik berhasil diaktifkan!'),
-                        ),
-                      );
-                      // Use the State's setState to rebuild the screen
-                      // parentContext.mounted implies specific widget is still in tree.
-                      // And if we are in a method of that state, we can call methods on it?
-                      // Actually, let's just use parentContext to find the Scaffold.
-                      // For setState, we need to be sure 'this' is mounted.
-                      // But if parentContext (which is this.context) is mounted, then this.mounted is true.
-                      this.setState(() {});
-                    }
-                  } catch (e) {
-                    if (parentContext.mounted) {
-                      ScaffoldMessenger.of(
-                        parentContext,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  }
-                },
-                child: const Text('Aktifkan'),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
