@@ -151,26 +151,32 @@ class _MainScreenState extends State<MainScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             // 1. Home
-            _buildNavItem(0, Icons.home_rounded, Icons.home_outlined),
+            Expanded(
+              child: _buildNavItem(0, Icons.home_rounded, Icons.home_outlined),
+            ),
 
             // 2. Bio
-            _buildNavItem(1, Icons.link_rounded, Icons.link),
+            Expanded(child: _buildNavItem(1, Icons.link_rounded, Icons.link)),
 
             // 3. Gap for FAB
             const SizedBox(width: 48),
 
             // 4. Catalog / Manage Catalog
-            _buildNavItem(
-              2,
-              isAdmin ? Icons.edit_note_rounded : Icons.menu_book_rounded,
-              isAdmin ? Icons.edit_note_outlined : Icons.menu_book_outlined,
+            Expanded(
+              child: _buildNavItem(
+                2,
+                isAdmin ? Icons.edit_note_rounded : Icons.menu_book_rounded,
+                isAdmin ? Icons.edit_note_outlined : Icons.menu_book_outlined,
+              ),
             ),
 
             // 5. Profile
-            _buildNavItem(
-              3,
-              Icons.person_rounded,
-              Icons.person_outline_rounded,
+            Expanded(
+              child: _buildNavItem(
+                3,
+                Icons.person_rounded,
+                Icons.person_outline_rounded,
+              ),
             ),
           ],
         ),

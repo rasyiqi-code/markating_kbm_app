@@ -4,6 +4,7 @@ import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:markating_kbm_app/src/features/admin/add_edit_product_screen.dart';
 
 class ProductManagementScreen extends StatelessWidget {
@@ -60,13 +61,49 @@ class ProductList extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.warning, size: 48, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text('No products found'),
-                TextButton(
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    houseType == 1 ? Icons.book_outlined : Icons.brush_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Belum ada produk',
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tambahkan produk baru untuk memulai',
+                  style: GoogleFonts.outfit(color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
                   onPressed: () =>
                       Navigator.pushNamed(context, '/admin/products/add'),
-                  child: const Text('Add Product'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Tambah Produk'),
                 ),
               ],
             ),
@@ -74,38 +111,149 @@ class ProductList extends StatelessWidget {
         }
 
         final products = snapshot.data!;
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 120),
+        return ListView.separated(
+          padding: const EdgeInsets.all(20),
           itemCount: products.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final product = products[index];
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: houseType == 1
-                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                      : AppTheme.secondaryColor.withValues(alpha: 0.1),
-                  child: Icon(
-                    houseType == 1 ? Icons.book : Icons.brush,
-                    color: houseType == 1
-                        ? AppTheme.primaryColor
-                        : AppTheme.secondaryColor,
+            return _buildProductCard(context, product, firestore);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildProductCard(
+    BuildContext context,
+    ProductModel product,
+    FirestoreService firestore,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddEditProductScreen(product: product),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Product Image / Icon
+                Hero(
+                  tag: 'product_${product.id}',
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: houseType == 1
+                          ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                          : AppTheme.secondaryColor.withValues(alpha: 0.1),
+                      image:
+                          (product.imageUrl != null &&
+                              product.imageUrl!.isNotEmpty)
+                          ? DecorationImage(
+                              image: NetworkImage(product.imageUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child:
+                        (product.imageUrl == null || product.imageUrl!.isEmpty)
+                        ? Icon(
+                            houseType == 1
+                                ? Icons.menu_book_rounded
+                                : Icons.brush_rounded,
+                            color: houseType == 1
+                                ? AppTheme.primaryColor
+                                : AppTheme.secondaryColor,
+                            size: 32,
+                          )
+                        : null,
                   ),
                 ),
-                title: Text(
-                  product.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                const SizedBox(width: 16),
+
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[900],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        NumberFormat.currency(
+                          locale: 'id',
+                          symbol: 'Rp',
+                          decimalDigits: 0,
+                        ).format(product.price),
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          product.category.toUpperCase(),
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                subtitle: Text(
-                  '${product.category}\n${NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0).format(product.price)}',
-                ),
-                isThreeLine: true,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+
+                // Actions
+                Column(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      icon: Icon(
+                        Icons.edit_rounded,
+                        color: Colors.grey[400],
+                        size: 20,
+                      ),
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -117,21 +265,36 @@ class ProductList extends StatelessWidget {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Colors.red,
+                        size: 20,
+                      ),
                       onPressed: () async {
                         final confirm = await showDialog(
                           context: context,
                           builder: (c) => AlertDialog(
-                            title: const Text('Confirm Delete'),
-                            content: Text('Delete ${product.name}?'),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: const Text('Hapus Produk'),
+                            content: Text(
+                              'Apakah Anda yakin ingin menghapus "${product.name}"?',
+                            ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(c, false),
-                                child: const Text('Cancel'),
+                                child: const Text(
+                                  'Batal',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(c, true),
-                                child: const Text('Delete'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                                child: const Text('Hapus'),
                               ),
                             ],
                           ),
@@ -143,11 +306,11 @@ class ProductList extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            );
-          },
-        );
-      },
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -3,7 +3,8 @@ import 'package:markating_kbm_app/src/core/models/product_model.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+
+import 'package:markating_kbm_app/src/core/utils/app_formatters.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -196,9 +197,7 @@ class CatalogList extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              NumberFormat.compactSimpleCurrency(
-                                locale: 'id',
-                              ).format(product.price),
+                              AppFormatters.currency(product.price),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

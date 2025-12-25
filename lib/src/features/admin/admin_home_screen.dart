@@ -299,7 +299,11 @@ class AdminHomeScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Rp ${user.totalCommissionEarned ~/ 1000}k',
+                    NumberFormat.currency(
+                      locale: 'en_US',
+                      symbol: 'Rp ',
+                      decimalDigits: 0,
+                    ).format(user.totalCommissionEarned),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.green,

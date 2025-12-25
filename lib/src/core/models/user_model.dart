@@ -6,6 +6,7 @@ class UserModel {
   final String? username; // Unique handle for profile URL
   final String? photoUrl; // Profile picture URL
   final int commissionBalance;
+  final int markupBalance;
   final int pulsaBalance;
   final int totalSalesCount;
   final int totalCommissionEarned; // All-time historic
@@ -27,6 +28,7 @@ class UserModel {
     this.address,
     this.phoneNumber,
     this.commissionBalance = 0,
+    this.markupBalance = 0,
     this.pulsaBalance = 0,
     this.totalSalesCount = 0,
     this.totalCommissionEarned = 0,
@@ -47,6 +49,7 @@ class UserModel {
       address: data['address'],
       phoneNumber: data['phone_number'],
       commissionBalance: (data['commission_balance'] ?? 0).toInt(),
+      markupBalance: (data['markup_balance'] ?? 0).toInt(),
       pulsaBalance: (data['pulsa_balance'] ?? 0).toInt(),
       totalSalesCount: (data['total_sales_count'] ?? 0).toInt(),
       totalCommissionEarned: (data['total_commission_earned'] ?? 0).toInt(),
@@ -71,6 +74,7 @@ class UserModel {
       'address': address,
       'phone_number': phoneNumber,
       'commission_balance': commissionBalance,
+      'markup_balance': markupBalance,
       'pulsa_balance': pulsaBalance,
       'total_sales_count': totalSalesCount,
       'total_commission_earned': totalCommissionEarned,

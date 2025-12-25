@@ -175,6 +175,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       final ImagePicker picker = ImagePicker();
                       final XFile? image = await picker.pickImage(
                         source: ImageSource.gallery,
+                        maxWidth:
+                            1080, // Resize before upload (Server-size optimization)
+                        maxHeight: 1080,
+                        imageQuality: 85, // Compress to ~85% quality
                       );
 
                       if (image == null) return;

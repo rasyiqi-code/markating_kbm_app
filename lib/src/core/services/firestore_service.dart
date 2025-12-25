@@ -8,6 +8,7 @@ import 'package:markating_kbm_app/src/core/models/notification_model.dart';
 import 'package:markating_kbm_app/src/core/models/claim_model.dart';
 import 'package:markating_kbm_app/src/core/models/user_model.dart';
 import 'package:markating_kbm_app/src/core/models/wallet_history_model.dart';
+import 'package:intl/intl.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -248,89 +249,134 @@ class FirestoreService {
       actor: actor,
     );
 
-    return _db.runTransaction((transaction) async {
-      final saleDoc = await transaction.get(saleRef);
-      if (!saleDoc.exists) throw Exception("Sale does not exist!");
+    return _db
+        .runTransaction((transaction) async {
+          final saleDoc = await transaction.get(saleRef);
+          if (!saleDoc.exists) throw Exception("Sale does not exist!");
 
-      final currentStatus = saleDoc.data()?['payment_status'];
+          final currentStatus = saleDoc.data()?['payment_status'];
 
-      // If moving TO COMPLETE from non-COMPLETE -> Add Bonus
-      // Logic adjusted: LUNAS is just Paid. COMPLETE is Finished/Delivered -> that's when agent gets paid.
-      if (newStatus == SaleModel.statusComplete &&
-          currentStatus != SaleModel.statusComplete) {
-        // Update Sale status and add history
-        final updateMap = {
-          'payment_status': newStatus,
-          'history': FieldValue.arrayUnion([historyItem.toMap()]),
-          ...?extraData,
-        };
-        transaction.update(saleRef, updateMap);
+          // If moving TO COMPLETE from non-COMPLETE -> Add Bonus
+          // Logic adjusted: LUNAS is just Paid. COMPLETE is Finished/Delivered -> that's when agent gets paid.
+          if (newStatus == SaleModel.statusComplete &&
+              currentStatus != SaleModel.statusComplete) {
+            // Update Sale status and add history
+            final updateMap = {
+              'payment_status': newStatus,
+              'history': FieldValue.arrayUnion([historyItem.toMap()]),
+              ...?extraData,
+            };
+            transaction.update(saleRef, updateMap);
 
-        // 1. Credit Commission
-        if (sale.commissionAmount > 0) {
-          transaction.update(userRef, {
-            'commission_balance': FieldValue.increment(
-              sale.commissionAmount.toInt(),
-            ),
-          });
+            // 1. Credit Commission
+            if (sale.commissionAmount > 0) {
+              transaction.update(userRef, {
+                'commission_balance': FieldValue.increment(
+                  sale.commissionAmount.toInt(),
+                ),
+              });
 
-          final commHistoryRef = _db.collection('wallet_history').doc();
-          final commHistory = WalletHistoryModel(
-            id: commHistoryRef.id,
-            userId: sale.userId,
-            type: 'COMMISSION_IN',
-            amount: sale.commissionAmount.toInt(),
-            description:
-                'Komisi Penjualan: ${sale.details['product_name'] ?? "Item"}',
-            relatedRefId: sale.id,
-            createdAt: DateTime.now(),
-          );
-          transaction.set(commHistoryRef, commHistory.toMap());
-        }
+              final commHistoryRef = _db.collection('wallet_history').doc();
+              final commHistory = WalletHistoryModel(
+                id: commHistoryRef.id,
+                userId: sale.userId,
+                type: 'COMMISSION_IN',
+                amount: sale.commissionAmount.toInt(),
+                description:
+                    'Komisi Penjualan: ${sale.details['product_name'] ?? "Item"}',
+                relatedRefId: sale.id,
+                createdAt: DateTime.now(),
+              );
+              transaction.set(commHistoryRef, commHistory.toMap());
+            }
 
-        // 2. Credit Pulsa Bonus
-        if (sale.pulsaBonusAmount > 0) {
-          transaction.update(userRef, {
-            'pulsa_balance': FieldValue.increment(
-              sale.pulsaBonusAmount.toInt(),
-            ),
-          });
+            // 2. Credit Pulsa Bonus
+            if (sale.pulsaBonusAmount > 0) {
+              transaction.update(userRef, {
+                'pulsa_balance': FieldValue.increment(
+                  sale.pulsaBonusAmount.toInt(),
+                ),
+              });
 
-          final pulsaHistoryRef = _db.collection('wallet_history').doc();
-          final pulsaHistory = WalletHistoryModel(
-            id: pulsaHistoryRef.id,
-            userId: sale.userId,
-            type: 'PULSA_IN',
-            amount: sale.pulsaBonusAmount.toInt(),
-            description:
-                'Bonus Pulsa: ${sale.details['product_name'] ?? "Item"}',
-            relatedRefId: sale.id,
-            createdAt: DateTime.now(),
-          );
-          transaction.set(pulsaHistoryRef, pulsaHistory.toMap());
-        }
+              final pulsaHistoryRef = _db.collection('wallet_history').doc();
+              final pulsaHistory = WalletHistoryModel(
+                id: pulsaHistoryRef.id,
+                userId: sale.userId,
+                type: 'PULSA_IN',
+                amount: sale.pulsaBonusAmount.toInt(),
+                description:
+                    'Bonus Pulsa: ${sale.details['product_name'] ?? "Item"}',
+                relatedRefId: sale.id,
+                createdAt: DateTime.now(),
+              );
+              transaction.set(pulsaHistoryRef, pulsaHistory.toMap());
+            }
 
-        // 3. Update User Stats (Total Sales & All-time Earnings)
-        // Transitioning to COMPLETE implies a successful sale close and earnings realized
-        transaction.update(userRef, {
-          'total_sales_count': FieldValue.increment(1),
-          'total_commission_earned': FieldValue.increment(
-            sale.commissionAmount.toInt(),
-          ),
-          'total_pulsa_earned': FieldValue.increment(
-            sale.pulsaBonusAmount.toInt(),
-          ),
+            // 3. Credit Markup Balance (NEW)
+            if ((sale.totalMarkup ?? 0) > 0) {
+              transaction.update(userRef, {
+                'markup_balance': FieldValue.increment(sale.totalMarkup ?? 0),
+              });
+
+              final markupHistoryRef = _db.collection('wallet_history').doc();
+              final markupHistory = WalletHistoryModel(
+                id: markupHistoryRef.id,
+                userId: sale.userId,
+                type: 'MARKUP_IN',
+                amount: sale.totalMarkup ?? 0,
+                description:
+                    'Markup Penjualan: ${sale.details['product_name'] ?? "Item"}',
+                relatedRefId: sale.id,
+                createdAt: DateTime.now(),
+              );
+              transaction.set(markupHistoryRef, markupHistory.toMap());
+            }
+
+            // 4. Update User Stats (Total Sales & All-time Earnings)
+            // Transitioning to COMPLETE implies a successful sale close and earnings realized
+            transaction.update(userRef, {
+              'total_sales_count': FieldValue.increment(1),
+              'total_commission_earned': FieldValue.increment(
+                sale.commissionAmount.toInt(),
+              ),
+              'total_pulsa_earned': FieldValue.increment(
+                sale.pulsaBonusAmount.toInt(),
+              ),
+            });
+          } else {
+            // Just update status (e.g., PENDING -> DP, or LUNAS -> COMPLETE, or -> PROBLEM)
+            final updateMap = {
+              'payment_status': newStatus,
+              'history': FieldValue.arrayUnion([historyItem.toMap()]),
+              ...?extraData,
+            };
+            transaction.update(saleRef, updateMap);
+          }
+        })
+        .then((_) {
+          // Post-transaction Notification
+          if (newStatus == SaleModel.statusComplete &&
+              note != 'NOTIFICATION_SENT') {
+            final double comm = sale.commissionAmount;
+            final double markup = (sale.totalMarkup ?? 0).toDouble();
+            final double earned = comm + markup;
+
+            if (earned > 0) {
+              sendNotification(
+                NotificationModel(
+                  id: '',
+                  title: 'Penjualan Selesai! 🎉',
+                  body:
+                      'Selamat! Penjualan "${sale.details['product_name']}" Selesai. Total pendapatan Rp ${NumberFormat.currency(locale: 'id', symbol: '', decimalDigits: 0).format(earned)} masuk saldo.',
+                  type: NotificationModel.typeSuccess,
+                  recipientId: sale.userId,
+                  relatedId: sale.id,
+                  createdAt: DateTime.now(),
+                ),
+              );
+            }
+          }
         });
-      } else {
-        // Just update status (e.g., PENDING -> DP, or LUNAS -> COMPLETE, or -> PROBLEM)
-        final updateMap = {
-          'payment_status': newStatus,
-          'history': FieldValue.arrayUnion([historyItem.toMap()]),
-          ...?extraData,
-        };
-        transaction.update(saleRef, updateMap);
-      }
-    });
   }
 
   Stream<List<SaleModel>> getUserSales(String userId) {
@@ -344,6 +390,40 @@ class FirestoreService {
               .map((doc) => SaleModel.fromMap(doc.data(), doc.id))
               .toList(),
         );
+  }
+
+  // Check Helper: Count bonuses received this month
+  Future<int> getUserBonusCountThisMonth(String userId) async {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
+
+    final snapshot = await _db
+        .collection('sales')
+        .where('user_id', isEqualTo: userId)
+        .where('created_at', isGreaterThanOrEqualTo: startOfMonth)
+        .where('created_at', isLessThan: nextMonth)
+        .get();
+
+    // Filter client side for > 0 because Firestore limited on range filters on different fields
+    int count = 0;
+    for (var doc in snapshot.docs) {
+      final pb = (doc.data()['pulsa_bonus_amount'] ?? 0) as num;
+      if (pb > 0) count++;
+    }
+    return count;
+  }
+
+  // Check Helper: Count completed sales
+  Future<int> getUserCompletedSalesCount(String userId) async {
+    final snapshot = await _db
+        .collection('sales')
+        .where('user_id', isEqualTo: userId)
+        .where('payment_status', isEqualTo: SaleModel.statusComplete)
+        .count()
+        .get();
+
+    return snapshot.count ?? 0;
   }
 
   Future<SaleModel?> getSale(String saleId) async {

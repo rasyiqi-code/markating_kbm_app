@@ -30,7 +30,9 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
   late TextEditingController _infoController;
   bool _isLoading = false;
 
-  bool get isBank => widget.allowedType == ClaimModel.typeBank;
+  bool get isBank =>
+      widget.allowedType == ClaimModel.typeBank ||
+      widget.allowedType == 'markup';
 
   @override
   void initState() {
@@ -80,11 +82,13 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
       return;
     }
 
-    if (amount < settings.minPayout) {
+    final minAmount = isBank ? settings.minPayout : settings.minPulsaWithdrawal;
+
+    if (amount < minAmount) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Minimal penarikan adalah ${AppFormatters.currency(settings.minPayout)}',
+            'Minimal penarikan adalah ${AppFormatters.currency(minAmount)}',
           ),
           backgroundColor: Colors.red,
         ),
@@ -100,9 +104,14 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
     }
 
     // Balance Check
-    final currentBalance = isBank
-        ? widget.user.commissionBalance
-        : widget.user.pulsaBalance;
+    int currentBalance = 0;
+    if (widget.allowedType == ClaimModel.typeBank) {
+      currentBalance = widget.user.commissionBalance;
+    } else if (widget.allowedType == 'markup') {
+      currentBalance = widget.user.markupBalance;
+    } else {
+      currentBalance = widget.user.pulsaBalance;
+    }
     if (amount > currentBalance) {
       ScaffoldMessenger.of(
         context,
@@ -132,7 +141,7 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
         id: '',
         title: isBank ? 'Permintaan Withdraw Baru' : 'Permintaan Pulsa Baru',
         body:
-            '${widget.user.name ?? "User"} meminta ${isBank ? "withdraw" : "pulsa"} sebesar ${NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0).format(amount)}',
+            '${widget.user.name ?? "User"} meminta ${isBank ? "withdraw (${widget.allowedType})" : "pulsa"} sebesar ${NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0).format(amount)}',
         type: NotificationModel.typeInfo,
         recipientId: 'role:admin',
         relatedId: claimId,
@@ -280,11 +289,14 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
                   style: TextStyle(color: Colors.grey[600]),
                 ),
 
-                if (settings.minPayout > 0)
+                if ((isBank
+                        ? settings.minPayout
+                        : settings.minPulsaWithdrawal) >
+                    0)
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                     child: Text(
-                      'Minimal penarikan: ${AppFormatters.currency(settings.minPayout)}',
+                      'Minimal penarikan: ${AppFormatters.currency(isBank ? settings.minPayout : settings.minPulsaWithdrawal)}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.outfit(
                         color: Colors.red[700],

@@ -22,6 +22,15 @@ class GlobalSettingsModel {
 
   final double minSaleForPulsaR2;
 
+  final double minPulsaWithdrawal; // New
+
+  // Bonus Limits
+  final bool enableMaxPulsaBonusLimit;
+  final int maxPulsaBonusCount;
+  final bool enableMinCompletedSalesLimit;
+  final int minCompletedSalesCount;
+  final bool enableMinSalesLimit; // New
+
   // Withdrawal Schedule
   final List<int> allowedWithdrawalDays; // 1 = Mon, 7 = Sun
 
@@ -33,6 +42,7 @@ class GlobalSettingsModel {
     this.minSaleForPulsa = 5000000.0, // Treated as R1
     this.pulsaBonusAmountR2 = 50000.0,
     this.minSaleForPulsaR2 = 5000000.0,
+    this.minPulsaWithdrawal = 20000.0, // Default 20k
     this.enableR1 = true,
     this.enableR2 = true,
     this.enableR1Commission = true,
@@ -42,6 +52,11 @@ class GlobalSettingsModel {
     this.latestInfo = 'Batas klaim pulsa bulan ini: Tgl 25.',
     this.webBaseUrl = 'https://kbm-group-app.web.app',
     this.allowedWithdrawalDays = const [1, 2, 3, 4, 5, 6, 7],
+    this.enableMaxPulsaBonusLimit = false,
+    this.maxPulsaBonusCount = 1,
+    this.enableMinCompletedSalesLimit = false,
+    this.minCompletedSalesCount = 5,
+    this.enableMinSalesLimit = true,
   });
 
   factory GlobalSettingsModel.fromMap(Map<String, dynamic> data) {
@@ -59,11 +74,18 @@ class GlobalSettingsModel {
       enableR2PulsaBonus: data['enable_r2_pulsa_bonus'] ?? true,
       pulsaBonusAmountR2: (data['pulsa_bonus_amount_r2'] ?? 50000).toDouble(),
       minSaleForPulsaR2: (data['min_sale_for_pulsa_r2'] ?? 5000000).toDouble(),
+      minPulsaWithdrawal: (data['min_pulsa_withdrawal'] ?? 20000).toDouble(),
       latestInfo: data['latest_info'] ?? 'Batas klaim pulsa bulan ini: Tgl 25.',
       webBaseUrl: data['web_base_url'] ?? 'https://kbm-group-app.web.app',
       allowedWithdrawalDays: List<int>.from(
         data['allowed_withdrawal_days'] ?? [1, 2, 3, 4, 5, 6, 7],
       ),
+      enableMaxPulsaBonusLimit: data['enable_max_pulsa_bonus_limit'] ?? false,
+      maxPulsaBonusCount: data['max_pulsa_bonus_count'] ?? 1,
+      enableMinCompletedSalesLimit:
+          data['enable_min_completed_sales_limit'] ?? false,
+      minCompletedSalesCount: data['min_completed_sales_count'] ?? 5,
+      enableMinSalesLimit: data['enable_min_sales_limit'] ?? true,
     );
   }
 
@@ -82,9 +104,15 @@ class GlobalSettingsModel {
       'enable_r2_pulsa_bonus': enableR2PulsaBonus,
       'pulsa_bonus_amount_r2': pulsaBonusAmountR2,
       'min_sale_for_pulsa_r2': minSaleForPulsaR2,
+      'min_pulsa_withdrawal': minPulsaWithdrawal,
       'latest_info': latestInfo,
       'web_base_url': webBaseUrl,
       'allowed_withdrawal_days': allowedWithdrawalDays,
+      'enable_max_pulsa_bonus_limit': enableMaxPulsaBonusLimit,
+      'max_pulsa_bonus_count': maxPulsaBonusCount,
+      'enable_min_completed_sales_limit': enableMinCompletedSalesLimit,
+      'min_completed_sales_count': minCompletedSalesCount,
+      'enable_min_sales_limit': enableMinSalesLimit,
     };
   }
 }

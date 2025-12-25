@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markating_kbm_app/src/core/services/auth_service.dart';
@@ -5,6 +6,8 @@ import 'package:markating_kbm_app/src/core/models/user_model.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:markating_kbm_app/src/features/admin/image_management_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:markating_kbm_app/src/core/services/storage_service.dart';
 import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -388,6 +391,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       text: _currentUser!.phoneNumber,
     );
 
+    // Dialog state
+    // ignore: no_leading_underscores_for_local_identifiers
+    Uint8List? _newProfileImageBytes;
+    // ignore: no_leading_underscores_for_local_identifiers
+    String? _newProfileFilename;
+    // ignore: no_leading_underscores_for_local_identifiers
+    bool _isUploading = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -396,205 +407,338 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 24,
-            right: 24,
-            top: 24,
-          ),
-          child: SingleChildScrollView(
-            // Added scroll view for more fields
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Edit Profil',
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickImage() async {
+              try {
+                final ImagePicker picker = ImagePicker();
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 800,
+                  maxHeight: 800,
+                  imageQuality: 85,
+                );
+                if (image != null) {
+                  final bytes = await image.readAsBytes();
+                  setDialogState(() {
+                    _newProfileImageBytes = bytes;
+                    _newProfileFilename = image.name;
+                  });
+                }
+              } catch (e) {
+                // Handle error
+              }
+            }
 
-                // Email (Read Only)
-                TextField(
-                  controller: emailController,
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: 'Alamat Email',
-                    border: const OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    helperText: 'Email tidak dapat diubah',
-                  ),
-                ),
-                const SizedBox(height: 16),
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Edit Profil',
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
 
-                // Name
-                TextField(
-                  controller: nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    border: OutlineInputBorder(),
-                    hintText: 'Nama sesuai KTP',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Username
-                TextField(
-                  controller: usernameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    border: OutlineInputBorder(),
-                    hintText: 'Username unik',
-                    helperText: 'Untuk link bio: kbm.bio/username',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // No KTP
-                TextField(
-                  controller: ktpController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'No. KTP',
-                    border: OutlineInputBorder(),
-                    hintText: '16 digit NIK',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Address
-                TextField(
-                  controller: addressController,
-                  maxLines: 2,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Alamat Lengkap',
-                    border: OutlineInputBorder(),
-                    hintText: 'Jalan, RT/RW, Kelurahan, Kecamatan',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Phone Number
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'No. WhatsApp / HP',
-                    border: OutlineInputBorder(),
-                    hintText: 'Contoh: 081234567890',
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                ElevatedButton(
-                  onPressed: () async {
-                    final newName = nameController.text.trim();
-                    final newUsername = usernameController.text.trim();
-                    final newKtp = ktpController.text.trim();
-                    final newAddress = addressController.text.trim();
-                    final newPhone = phoneController.text.trim();
-
-                    if (newName.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Nama tidak boleh kosong'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    if (newUsername.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Username tidak boleh kosong'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    final validCharacters = RegExp(r'^[a-zA-Z0-9_]+$');
-                    if (!validCharacters.hasMatch(newUsername)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Username hanya huruf, angka, garis bawah',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-
-                    try {
-                      final firestore = Provider.of<FirestoreService>(
-                        context,
-                        listen: false,
-                      );
-
-                      // Check uniqueness
-                      if (newUsername != _currentUser!.username) {
-                        final exists = await firestore.checkUsernameExists(
-                          newUsername,
-                        );
-                        if (exists) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Username sudah digunakan'),
+                    // Profile Image Picker
+                    Center(
+                      child: GestureDetector(
+                        onTap: pickImage,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  width: 2,
+                                ),
                               ),
-                            );
-                          }
-                          return;
-                        }
-                      }
-
-                      // Update Profile
-                      await firestore.updateUserProfile(_currentUser!.id, {
-                        'name': newName,
-                        'username': newUsername,
-                        'ktp_number': newKtp,
-                        'address': newAddress,
-                        'phone_number': newPhone,
-                        // Could also sync 'bank_details.phone' if empty, but keeping separate is safer
-                      });
-
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        await _loadUser(); // Refresh UI
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Profil berhasil diperbarui!'),
+                              child: CircleAvatar(
+                                radius: 48,
+                                backgroundColor: Colors.grey[100],
+                                foregroundImage: _newProfileImageBytes != null
+                                    ? MemoryImage(_newProfileImageBytes!)
+                                    : (_currentUser?.photoUrl != null
+                                              ? NetworkImage(
+                                                  _currentUser!.photoUrl!,
+                                                )
+                                              : null)
+                                          as ImageProvider?,
+                                child:
+                                    _newProfileImageBytes == null &&
+                                        _currentUser?.photoUrl == null
+                                    ? Icon(
+                                        Icons.person,
+                                        size: 40,
+                                        color: Colors.grey[400],
+                                      )
+                                    : null,
+                              ),
                             ),
-                          );
-                        }
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Simpan Perubahan'),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Email (Read Only)
+                    TextField(
+                      controller: emailController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'Alamat Email',
+                        border: const OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        helperText: 'Email tidak dapat diubah',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Name
+                    TextField(
+                      controller: nameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama Lengkap',
+                        border: OutlineInputBorder(),
+                        hintText: 'Nama sesuai KTP',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Username
+                    TextField(
+                      controller: usernameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Username',
+                        border: OutlineInputBorder(),
+                        hintText: 'Username unik',
+                        helperText: 'Untuk link bio: kbm.bio/username',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // No KTP
+                    TextField(
+                      controller: ktpController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'No. KTP',
+                        border: OutlineInputBorder(),
+                        hintText: '16 digit NIK',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Address
+                    TextField(
+                      controller: addressController,
+                      maxLines: 2,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        labelText: 'Alamat Lengkap',
+                        border: OutlineInputBorder(),
+                        hintText: 'Jalan, RT/RW, Kelurahan, Kecamatan',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Phone Number
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'No. WhatsApp / HP',
+                        border: OutlineInputBorder(),
+                        hintText: 'Contoh: 081234567890',
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    ElevatedButton(
+                      onPressed: _isUploading
+                          ? null
+                          : () async {
+                              final newName = nameController.text.trim();
+                              final newUsername = usernameController.text
+                                  .trim();
+                              final newKtp = ktpController.text.trim();
+                              final newAddress = addressController.text.trim();
+                              final newPhone = phoneController.text.trim();
+
+                              if (newName.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Nama tidak boleh kosong'),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (newUsername.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Username tidak boleh kosong',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final validCharacters = RegExp(
+                                r'^[a-zA-Z0-9_]+$',
+                              );
+                              if (!validCharacters.hasMatch(newUsername)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Username hanya huruf, angka, garis bawah',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              setDialogState(() => _isUploading = true);
+
+                              try {
+                                final firestore = Provider.of<FirestoreService>(
+                                  context,
+                                  listen: false,
+                                );
+
+                                // Check uniqueness
+                                if (newUsername != _currentUser!.username) {
+                                  final exists = await firestore
+                                      .checkUsernameExists(newUsername);
+                                  if (exists) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Username sudah digunakan',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    setDialogState(() => _isUploading = false);
+                                    return;
+                                  }
+                                }
+
+                                String? newPhotoUrl;
+                                // Upload Photo if selected
+                                if (_newProfileImageBytes != null) {
+                                  if (!context.mounted) return;
+                                  final storage = Provider.of<StorageService>(
+                                    context,
+                                    listen: false,
+                                  );
+                                  newPhotoUrl = await storage.uploadBytes(
+                                    _newProfileImageBytes!,
+                                    _newProfileFilename ?? 'profile.jpg',
+                                    'profile_photos/${_currentUser!.id}',
+                                  );
+                                }
+
+                                // Update Profile
+                                final updateData = {
+                                  'name': newName,
+                                  'username': newUsername,
+                                  'ktp_number': newKtp,
+                                  'address': newAddress,
+                                  'phone_number': newPhone,
+                                };
+                                if (newPhotoUrl != null) {
+                                  updateData['photo_url'] = newPhotoUrl;
+                                }
+
+                                await firestore.updateUserProfile(
+                                  _currentUser!.id,
+                                  updateData,
+                                );
+
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  await _loadUser(); // Refresh UI
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Profil berhasil diperbarui!',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
+                                setDialogState(() => _isUploading = false);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: _isUploading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Simpan Perubahan'),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

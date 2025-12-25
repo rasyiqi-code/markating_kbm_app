@@ -15,6 +15,8 @@ import 'package:markating_kbm_app/src/core/utils/app_formatters.dart';
 import 'package:markating_kbm_app/src/core/utils/currency_input_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:markating_kbm_app/src/features/sales/widgets/product_picker_field.dart';
+import 'package:markating_kbm_app/src/features/sales/widgets/markup_input_field.dart';
 
 class SalesEntryR2Screen extends StatefulWidget {
   const SalesEntryR2Screen({super.key});
@@ -24,6 +26,8 @@ class SalesEntryR2Screen extends StatefulWidget {
 }
 
 class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
+  // ... (keep start of file) ...
+
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isUploadingProof = false;
@@ -35,6 +39,7 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
   final _unitPriceController = TextEditingController();
   final _qtyController = TextEditingController(text: '1');
   final _totalPriceController = TextEditingController();
+  final _markupController = TextEditingController(); // Markup per item
   final _dpAmountController = TextEditingController();
 
   String _paymentStatus = 'DP';
@@ -42,6 +47,10 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
   // Calculated values
   double _commissionAmount = 0;
   double _pulsaBonusAmount = 0;
+
+  // Limits Logic
+  int _userMonthlyBonusCount = 0;
+  int _userCompletedSalesCount = 0;
 
   // R2 Specific Fields
   final _mitraController = TextEditingController();
@@ -67,13 +76,26 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
 
   Future<void> _loadUserInfo() async {
     final auth = Provider.of<AuthService>(context, listen: false);
+    final firestore = Provider.of<FirestoreService>(context, listen: false);
     final user = await auth.getCurrentUserDetails();
+
     if (mounted && user != null) {
+      // Fetch stats for limits
+      final monthlyBonuses = await firestore.getUserBonusCountThisMonth(
+        user.id,
+      );
+      final completedSales = await firestore.getUserCompletedSalesCount(
+        user.id,
+      );
+
       setState(() {
         _agentName = (user.name != null && user.name!.isNotEmpty)
             ? user.name!
             : user.email.split('@').first;
+        _userMonthlyBonusCount = monthlyBonuses;
+        _userCompletedSalesCount = completedSales;
       });
+      _calculateValues();
     }
   }
 
@@ -120,8 +142,26 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
     }
 
     // R2 Pulsa Bonus
+    bool isEligibleForBonus = true;
+
+    // Check History Limit
+    if (_settings!.enableMinCompletedSalesLimit) {
+      if (_userCompletedSalesCount < _settings!.minCompletedSalesCount) {
+        isEligibleForBonus = false;
+      }
+    }
+
+    // Check Monthly Frequency Limit
+    if (_settings!.enableMaxPulsaBonusLimit) {
+      if (_userMonthlyBonusCount >= _settings!.maxPulsaBonusCount) {
+        isEligibleForBonus = false;
+      }
+    }
+
     if (_settings!.enableR2PulsaBonus &&
-        total >= _settings!.minSaleForPulsaR2) {
+        (!_settings!.enableMinSalesLimit ||
+            total >= _settings!.minSaleForPulsaR2) &&
+        isEligibleForBonus) {
       _pulsaBonusAmount = _settings!.pulsaBonusAmountR2;
     } else {
       _pulsaBonusAmount = 0;
@@ -182,32 +222,29 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
 
       if (user == null) throw Exception('Pengguna tidak ditemukan');
 
-      final agentName = (user.name != null && user.name!.isNotEmpty)
-          ? user.name!
-          : user.email.split('@').first;
-
       // Construct Details Map
-      final details = <String, dynamic>{
-        'house_type': 2, // Explicit R2
-        'product_name': _selectedProduct?.name ?? 'Unknown Product',
-        'buyer_name': agentName,
-        'nama_mitra': _mitraController.text,
-        'judul_layout': _judulLayoutController.text,
-        'ukuran_naskah': _ukuranController.text,
-        'jumlah_halaman': _halamanController.text,
-        'qty': int.tryParse(_qtyController.text) ?? 1,
-      };
+      final qty = int.parse(_qtyController.text);
+      final markupPerQty =
+          int.tryParse(
+            _markupController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+          ) ??
+          0;
+      final totalMarkup = markupPerQty * qty;
 
-      final total =
+      double unitPrice =
           double.tryParse(
-            _totalPriceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+            _unitPriceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
           ) ??
           0;
 
       // Determine Paid Amount
       double paidAmount = 0;
       if (_paymentStatus == 'LUNAS') {
-        paidAmount = total;
+        paidAmount =
+            double.tryParse(
+              _totalPriceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+            ) ??
+            0;
       } else {
         // DP
         paidAmount =
@@ -215,26 +252,32 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
               _dpAmountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
             ) ??
             0;
-        if (paidAmount <= 0) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Masukkan jumlah DP yang valid')),
-            );
-          }
-          setState(() => _isLoading = false);
-          return;
-        }
       }
 
       final sale = SaleModel(
         id: '', // Auto-gen
         userId: user.id,
         productId: _selectedProduct!.id,
-        details: details,
-        totalPrice: total,
+        details: {
+          'product_name': _selectedProduct!.name,
+          'product_price': unitPrice,
+          'quantity': qty,
+          'mitra': _mitraController.text.trim(),
+          'judul_layout': _judulLayoutController.text.trim(),
+          'ukuran': _ukuranController.text.trim(),
+          'halaman': _halamanController.text.trim(),
+          'bonus_multiplier': _userMonthlyBonusCount < 5 ? 0 : 1, // Example
+          'markup_per_qty': markupPerQty,
+        },
+        totalPrice: double.parse(
+          _totalPriceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+        ),
         paymentStatus: _paymentStatus,
-        bonusAmount: _commissionAmount + _pulsaBonusAmount,
+        bonusAmount: 0, // Calculated by server/admin later or here
         commissionAmount: _commissionAmount,
+        commissionEarned: _commissionAmount.toInt(), // Save as int for legacy
+        markupPerQty: markupPerQty,
+        totalMarkup: totalMarkup,
         pulsaBonusAmount: _pulsaBonusAmount,
         paidAmount: paidAmount,
         createdAt: DateTime.now(),
@@ -248,7 +291,7 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
         id: '',
         title: 'Transaksi Baru (KBM Kreator)',
         body:
-            '${user.name ?? "Marketing"} baru saja input transaksi sebesar ${AppFormatters.currency(total)}',
+            '${user.name ?? "Marketing"} baru saja submit naskah "${_judulLayoutController.text}". Total: ${AppFormatters.currency(sale.totalPrice)}',
         type: NotificationModel.typeInfo,
         recipientId: 'role:admin',
         createdAt: DateTime.now(),
@@ -265,7 +308,7 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
             id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
             title: 'Penjualan Berhasil!',
             body:
-                'Data penjualan saved. Total: ${AppFormatters.currency(total)}',
+                'Data penjualan saved. Total: ${AppFormatters.currency(sale.totalPrice)}',
           );
         } catch (e) {
           debugPrint('Notification error: $e');
@@ -417,7 +460,7 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
               Row(
                 children: [
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: _buildTextField(
                       _unitPriceController,
                       'Harga Satuan',
@@ -430,7 +473,7 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: _buildTextField(
                       _qtyController,
                       'Jumlah (Judul/Ex)',
@@ -474,6 +517,15 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
                     _calculateValues();
                   });
                 },
+                isExpanded: true,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Markup Input (NEW)
+              MarkupInputField(
+                controller: _markupController,
+                quantity: int.tryParse(_qtyController.text) ?? 1,
               ),
 
               if (_paymentStatus == 'DP') ...[
@@ -677,43 +729,12 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
   }
 
   Widget _buildProductDropdown(Color color) {
-    return StreamBuilder<List<ProductModel>>(
+    return ProductPickerField(
       stream: _productsStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return Text('Error: ${snapshot.error}');
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final products = snapshot.data!;
-
-        return DropdownButtonFormField<ProductModel>(
-          initialValue: _selectedProduct,
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          decoration:
-              _inputDecoration(
-                'Pilih Layanan',
-                Icons.shopping_bag_outlined,
-              ).copyWith(
-                fillColor: color.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark
-                      ? 0.2
-                      : 0.05,
-                ),
-              ),
-          items: products.map((product) {
-            return DropdownMenuItem(
-              value: product,
-              child: Text(product.name, overflow: TextOverflow.ellipsis),
-            );
-          }).toList(),
-          onChanged: _onProductChanged,
-          isExpanded: true,
-        );
-      },
+      selectedProduct: _selectedProduct,
+      onChanged: _onProductChanged,
+      label: 'Pilih Layanan',
+      color: color,
     );
   }
 }

@@ -41,6 +41,9 @@ class SaleModel {
   final String paymentStatus; // DP, LUNAS, PENDING, CANCELED, COMPLETE, PROBLEM
   final double bonusAmount; // General/Legacy total bonus
   final double commissionAmount; // Specific Commission (Cash)
+  final int? commissionEarned;
+  final int? markupPerQty;
+  final int? totalMarkup; // Specific Commission (Cash)
   final double pulsaBonusAmount; // Specific Pulsa (Credit)
   final double paidAmount; // Amount currently paid (DP or Full)
   final DateTime createdAt;
@@ -63,8 +66,11 @@ class SaleModel {
     required this.paymentStatus,
     required this.bonusAmount,
     required this.createdAt,
-    this.commissionAmount = 0,
-    this.pulsaBonusAmount = 0,
+    this.commissionAmount = 0.0,
+    this.commissionEarned,
+    this.markupPerQty,
+    this.totalMarkup,
+    this.pulsaBonusAmount = 0.0,
     this.paidAmount = 0,
     this.transactionProofUrl,
     this.history = const [],
@@ -80,6 +86,9 @@ class SaleModel {
       paymentStatus: data['payment_status'] ?? statusPending,
       bonusAmount: (data['bonus_amount'] ?? 0).toDouble(),
       commissionAmount: (data['commission_amount'] ?? 0).toDouble(),
+      commissionEarned: (data['commission_earned'] ?? 0),
+      markupPerQty: (data['markup_per_qty'] ?? 0),
+      totalMarkup: (data['total_markup'] ?? 0),
       pulsaBonusAmount: (data['pulsa_bonus_amount'] ?? 0).toDouble(),
       paidAmount: (data['paid_amount'] ?? 0).toDouble(),
       createdAt: (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -101,6 +110,9 @@ class SaleModel {
       'payment_status': paymentStatus,
       'bonus_amount': bonusAmount,
       'commission_amount': commissionAmount,
+      'commission_earned': commissionEarned,
+      'markup_per_qty': markupPerQty,
+      'total_markup': totalMarkup,
       'pulsa_bonus_amount': pulsaBonusAmount,
       'paid_amount': paidAmount,
       'created_at': Timestamp.fromDate(createdAt),

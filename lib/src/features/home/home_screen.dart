@@ -3,14 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:markating_kbm_app/src/core/models/user_model.dart';
 import 'package:markating_kbm_app/src/core/models/global_settings_model.dart';
 import 'package:markating_kbm_app/src/core/services/auth_service.dart';
-import 'package:markating_kbm_app/src/core/models/claim_model.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/features/home/widgets/dashboard_stats.dart';
 import 'package:markating_kbm_app/src/features/home/widgets/wallet_card.dart';
-// import 'package:markating_kbm_app/src/features/sales/history/sales_history_screen.dart';
+import 'package:markating_kbm_app/src/features/sales/history/sales_history_screen.dart';
 import 'package:markating_kbm_app/src/features/wallet/withdrawal_request_screen.dart';
 import 'package:markating_kbm_app/src/features/notifications/notification_controller.dart';
+import 'package:markating_kbm_app/src/features/home/widgets/markup_balance_card.dart';
 import 'package:markating_kbm_app/src/features/notifications/notification_list_screen.dart';
+import 'package:markating_kbm_app/src/core/models/sale_model.dart';
+import 'package:markating_kbm_app/src/core/utils/app_formatters.dart'; // Added
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -177,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 24),
 
-              // 1.2 Wallet Card (NEW)
+              // 2. Main Stats (Wallet)
               WalletCard(
                 user: user,
                 onClaimTap: () {
@@ -186,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (context) => WithdrawalRequestScreen(
                         user: user,
-                        allowedType: ClaimModel.typeBank,
+                        allowedType: 'commission',
                       ),
                     ),
                   );
@@ -197,17 +199,36 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (context) => WithdrawalRequestScreen(
                         user: user,
-                        allowedType: ClaimModel.typePulsa,
+                        allowedType: 'pulsa',
                       ),
                     ),
                   );
                 },
               ),
+
+              // 3. Markup Balance Card (NEW)
+              MarkupBalanceCard(
+                user: user,
+                onWithdrawTap: () {
+                  // Reuse withdrawal screen but for markup
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WithdrawalRequestScreen(
+                        user: user,
+                        allowedType: 'markup',
+                      ),
+                    ),
+                  );
+                },
+              ),
+
               const SizedBox(height: 24),
 
-              // 1.5 Stats Section
-              if (_currentUser != null)
-                DashboardStats(userId: _currentUser!.id),
+              // 4. Dashboard Stats (Sales Count, Total Rewards)
+              DashboardStats(userId: user.id),
+
+              const SizedBox(height: 24),
 
               const SizedBox(height: 24),
 
@@ -227,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const NotificationListScreen(),
+                          builder: (_) => const SalesHistoryScreen(),
                         ),
                       );
                     },
@@ -237,15 +258,21 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Recent Activity List (From Notifications)
-              Consumer<NotificationController>(
-                builder: (context, controller, child) {
-                  final notifications = controller.notifications
-                      .take(3)
-                      .toList();
+              // Recent Activity List (From Sales)
+              StreamBuilder<List<SaleModel>>(
+                stream: Provider.of<FirestoreService>(
+                  context,
+                  listen: false,
+                ).getUserSales(user.id),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                  if (notifications.isEmpty) {
+                  final sales = snapshot.data!;
+                  if (sales.isEmpty) {
                     return Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
@@ -256,17 +283,48 @@ class _HomeScreenState extends State<HomeScreen> {
                           ).dividerColor.withValues(alpha: 0.2),
                         ),
                       ),
-                      child: Text(
-                        'Belum ada aktifitas terbaru.',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      child: Center(
+                        child: Text(
+                          'Belum ada transaksi terbaru.',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     );
                   }
 
+                  // Take top 3
+                  final recentSales = sales.take(3).toList();
+
                   return Column(
-                    children: notifications.map((n) {
+                    children: recentSales.map((sale) {
+                      final isComplete =
+                          sale.paymentStatus == SaleModel.statusComplete;
+                      final isLunas =
+                          sale.paymentStatus == SaleModel.statusLunas;
+                      final isProblem =
+                          sale.paymentStatus == SaleModel.statusProblem;
+
+                      Color statusColor;
+                      IconData statusIcon;
+
+                      if (isComplete) {
+                        statusColor = Colors.blue;
+                        statusIcon = Icons.check_circle;
+                      } else if (isLunas) {
+                        statusColor = Colors.green;
+                        statusIcon = Icons.verified;
+                      } else if (isProblem) {
+                        statusColor = Colors.red;
+                        statusIcon = Icons.warning_amber_rounded;
+                      } else {
+                        statusColor = Colors.orange;
+                        statusIcon = Icons.access_time_filled;
+                      }
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
@@ -292,12 +350,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.1),
+                                color: statusColor.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
-                                Icons.check_circle_rounded,
-                                color: Colors.green,
+                              child: Icon(
+                                statusIcon,
+                                color: statusColor,
                                 size: 20,
                               ),
                             ),
@@ -307,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    n.title,
+                                    sale.details['product_name'] ?? 'Produk',
                                     style: GoogleFonts.outfit(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
@@ -318,9 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    n.body,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                    '${AppFormatters.currency(sale.totalPrice)} • ${sale.paymentStatus}',
                                     style: TextStyle(
                                       color: Colors.grey[600],
                                       fontSize: 12,
@@ -328,9 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    _formatTimeAgo(
-                                      n.createdAt,
-                                    ), // Need a helper for this
+                                    _formatTimeAgo(sale.createdAt),
                                     style: TextStyle(
                                       color: Colors.grey[400],
                                       fontSize: 10,

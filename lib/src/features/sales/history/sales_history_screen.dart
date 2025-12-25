@@ -186,6 +186,7 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
     }
 
     final isPulsa = claim.type == ClaimModel.typePulsa;
+    final isMarkup = claim.type == 'markup';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -197,12 +198,24 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isPulsa ? Colors.orange.shade50 : Colors.blue.shade50,
+                color: isPulsa
+                    ? Colors.orange.shade50
+                    : isMarkup
+                    ? Colors.green.shade50
+                    : Colors.blue.shade50,
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isPulsa ? Icons.phone_android : Icons.account_balance,
-                color: isPulsa ? Colors.orange : Colors.blue,
+                isPulsa
+                    ? Icons.phone_android_rounded
+                    : isMarkup
+                    ? Icons.trending_up_rounded
+                    : Icons.account_balance_rounded,
+                color: isPulsa
+                    ? Colors.orange
+                    : isMarkup
+                    ? Colors.green
+                    : Colors.blue,
               ),
             ),
             const SizedBox(width: 16),
@@ -211,7 +224,11 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isPulsa ? 'Klaim Pulsa' : 'Tarik Tunai',
+                    isPulsa
+                        ? 'Klaim Pulsa'
+                        : isMarkup
+                        ? 'Penarikan Markup'
+                        : 'Penarikan Komisi',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
@@ -389,6 +406,26 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                   Icon(Icons.chevron_right, color: Colors.grey[400]),
                 ],
               ),
+              if ((sale.totalMarkup ?? 0) > 0) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Keuntungan Markup',
+                      style: TextStyle(fontSize: 12, color: Colors.green[700]),
+                    ),
+                    Text(
+                      AppFormatters.currency(sale.totalMarkup ?? 0),
+                      style: GoogleFonts.outfit(
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (sale.paymentStatus == 'DP' && sale.paidAmount > 0) ...[
                 const SizedBox(height: 8),
                 Container(
