@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_web_plugins/url_strategy.dart'; // Add this for cleaner URLs
+import 'package:intl/date_symbol_data_local.dart'; // Import for date formatting initialization
 
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:markating_kbm_app/src/features/auth/login_screen.dart';
@@ -35,6 +36,7 @@ void main() async {
   usePathUrlStrategy();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await dotenv.load(fileName: "assets/env"); // Load environment variables
+  await initializeDateFormatting('id_ID', null); // Initialize date formatting
 
   runApp(
     MultiProvider(

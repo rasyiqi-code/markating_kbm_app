@@ -36,6 +36,8 @@ class NotificationController extends ChangeNotifier {
       stream = _firestore.getAdminNotifications();
     } else {
       stream = _firestore.getUserNotifications(userId);
+      // Run cleanup once on start (optimistic, don't await)
+      _firestore.cleanupOldNotifications(userId);
     }
 
     _subscription = stream.listen((newList) {

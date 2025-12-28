@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:markating_kbm_app/src/core/models/product_model.dart';
 import 'package:markating_kbm_app/src/core/models/sale_model.dart';
 import 'package:markating_kbm_app/src/core/models/global_settings_model.dart';
@@ -216,6 +217,26 @@ class FirestoreService {
         transaction.set(pulsaHistoryRef, pulsaHistory.toMap());
       }
 
+      // 4. Credit Markup Balance (FIXED)
+      if ((sale.totalMarkup ?? 0) > 0) {
+        transaction.update(userRef, {
+          'markup_balance': FieldValue.increment(sale.totalMarkup ?? 0),
+        });
+
+        final markupHistoryRef = _db.collection('wallet_history').doc();
+        final markupHistory = WalletHistoryModel(
+          id: markupHistoryRef.id,
+          userId: sale.userId,
+          type: 'MARKUP_IN',
+          amount: sale.totalMarkup ?? 0,
+          description:
+              'Markup Penjualan: ${sale.details['product_name'] ?? "Item"}',
+          relatedRefId: saleRef.id,
+          createdAt: DateTime.now(),
+        );
+        transaction.set(markupHistoryRef, markupHistory.toMap());
+      }
+
       // 4. Update User Stats (Total Sales & All-time Earnings)
       // Only for COMPLETE transactions
       transaction.update(userRef, {
@@ -253,6 +274,8 @@ class FirestoreService {
         .runTransaction((transaction) async {
           final saleDoc = await transaction.get(saleRef);
           if (!saleDoc.exists) throw Exception("Sale does not exist!");
+          final userDoc = await transaction.get(userRef);
+          if (!userDoc.exists) throw Exception("User does not exist!");
 
           final currentStatus = saleDoc.data()?['payment_status'];
 
@@ -260,9 +283,37 @@ class FirestoreService {
           // Logic adjusted: LUNAS is just Paid. COMPLETE is Finished/Delivered -> that's when agent gets paid.
           if (newStatus == SaleModel.statusComplete &&
               currentStatus != SaleModel.statusComplete) {
-            // Update Sale status and add history
+            // --- BONUS VERIFICATION LOGIC ---
+            double finalBonusAmount = sale.pulsaBonusAmount;
+            final Map<String, dynamic> userUpdates = {};
+
+            if (finalBonusAmount > 0) {
+              final lastBonusTimestamp = userDoc.data()?['last_pulsa_bonus_at'];
+              DateTime? lastBonus;
+              if (lastBonusTimestamp is Timestamp) {
+                lastBonus = lastBonusTimestamp.toDate();
+              }
+
+              final now = DateTime.now();
+              // Check if bonus already given this month
+              if (lastBonus != null &&
+                  lastBonus.year == now.year &&
+                  lastBonus.month == now.month) {
+                // LIMIT REACHED: Deny bonus
+                finalBonusAmount = 0;
+              } else {
+                // ELIGIBLE: Mark as given
+                userUpdates['last_pulsa_bonus_at'] =
+                    FieldValue.serverTimestamp();
+              }
+            }
+            // --------------------------------
+
+            // Update Sale status and persist the final bonus amount
             final updateMap = {
               'payment_status': newStatus,
+              'pulsa_bonus_amount':
+                  finalBonusAmount, // Override with verified amount
               'history': FieldValue.arrayUnion([historyItem.toMap()]),
               ...?extraData,
             };
@@ -270,11 +321,9 @@ class FirestoreService {
 
             // 1. Credit Commission
             if (sale.commissionAmount > 0) {
-              transaction.update(userRef, {
-                'commission_balance': FieldValue.increment(
-                  sale.commissionAmount.toInt(),
-                ),
-              });
+              userUpdates['commission_balance'] = FieldValue.increment(
+                sale.commissionAmount.toInt(),
+              );
 
               final commHistoryRef = _db.collection('wallet_history').doc();
               final commHistory = WalletHistoryModel(
@@ -290,20 +339,18 @@ class FirestoreService {
               transaction.set(commHistoryRef, commHistory.toMap());
             }
 
-            // 2. Credit Pulsa Bonus
-            if (sale.pulsaBonusAmount > 0) {
-              transaction.update(userRef, {
-                'pulsa_balance': FieldValue.increment(
-                  sale.pulsaBonusAmount.toInt(),
-                ),
-              });
+            // 2. Credit Pulsa Bonus (Verified Amount)
+            if (finalBonusAmount > 0) {
+              userUpdates['pulsa_balance'] = FieldValue.increment(
+                finalBonusAmount.toInt(),
+              );
 
               final pulsaHistoryRef = _db.collection('wallet_history').doc();
               final pulsaHistory = WalletHistoryModel(
                 id: pulsaHistoryRef.id,
                 userId: sale.userId,
                 type: 'PULSA_IN',
-                amount: sale.pulsaBonusAmount.toInt(),
+                amount: finalBonusAmount.toInt(),
                 description:
                     'Bonus Pulsa: ${sale.details['product_name'] ?? "Item"}',
                 relatedRefId: sale.id,
@@ -312,11 +359,11 @@ class FirestoreService {
               transaction.set(pulsaHistoryRef, pulsaHistory.toMap());
             }
 
-            // 3. Credit Markup Balance (NEW)
+            // 3. Credit Markup Balance
             if ((sale.totalMarkup ?? 0) > 0) {
-              transaction.update(userRef, {
-                'markup_balance': FieldValue.increment(sale.totalMarkup ?? 0),
-              });
+              userUpdates['markup_balance'] = FieldValue.increment(
+                sale.totalMarkup ?? 0,
+              );
 
               final markupHistoryRef = _db.collection('wallet_history').doc();
               final markupHistory = WalletHistoryModel(
@@ -332,15 +379,107 @@ class FirestoreService {
               transaction.set(markupHistoryRef, markupHistory.toMap());
             }
 
-            // 4. Update User Stats (Total Sales & All-time Earnings)
-            // Transitioning to COMPLETE implies a successful sale close and earnings realized
+            // 4. Update User Stats
+            userUpdates['total_sales_count'] = FieldValue.increment(1);
+            userUpdates['total_commission_earned'] = FieldValue.increment(
+              sale.commissionAmount.toInt(),
+            );
+            userUpdates['total_pulsa_earned'] = FieldValue.increment(
+              finalBonusAmount.toInt(),
+            );
+
+            // Apply all user updates
+            if (userUpdates.isNotEmpty) {
+              transaction.update(userRef, userUpdates);
+            }
+          } else if (currentStatus == SaleModel.statusComplete &&
+              newStatus != SaleModel.statusComplete) {
+            // REVERT LOGIC: Deduct Balance & Stats if moving AWAY from COMPLETE
+
+            // Update Sale status
+            final updateMap = {
+              'payment_status': newStatus,
+              'history': FieldValue.arrayUnion([historyItem.toMap()]),
+              ...?extraData,
+            };
+            transaction.update(saleRef, updateMap);
+
+            // 1. Deduct Commission
+            if (sale.commissionAmount > 0) {
+              transaction.update(userRef, {
+                'commission_balance': FieldValue.increment(
+                  -sale.commissionAmount.toInt(),
+                ),
+              });
+              final commHistoryRef = _db.collection('wallet_history').doc();
+              transaction.set(
+                commHistoryRef,
+                WalletHistoryModel(
+                  id: commHistoryRef.id,
+                  userId: sale.userId,
+                  type: 'COMMISSION_OUT', // Reversal
+                  amount: sale.commissionAmount.toInt(),
+                  description:
+                      'Reversal: Status changed from COMPLETE to $newStatus',
+                  relatedRefId: sale.id,
+                  createdAt: DateTime.now(),
+                ).toMap(),
+              );
+            }
+
+            // 2. Deduct Pulsa Bonus
+            if (sale.pulsaBonusAmount > 0) {
+              transaction.update(userRef, {
+                'pulsa_balance': FieldValue.increment(
+                  -sale.pulsaBonusAmount.toInt(),
+                ),
+              });
+              final pulsaHistoryRef = _db.collection('wallet_history').doc();
+              transaction.set(
+                pulsaHistoryRef,
+                WalletHistoryModel(
+                  id: pulsaHistoryRef.id,
+                  userId: sale.userId,
+                  type: 'PULSA_OUT', // Reversal
+                  amount: sale.pulsaBonusAmount.toInt(),
+                  description:
+                      'Reversal: Status changed from COMPLETE to $newStatus',
+                  relatedRefId: sale.id,
+                  createdAt: DateTime.now(),
+                ).toMap(),
+              );
+            }
+
+            // 3. Deduct Markup
+            final totalMarkup = sale.totalMarkup ?? 0;
+            if (totalMarkup > 0) {
+              transaction.update(userRef, {
+                'markup_balance': FieldValue.increment(-totalMarkup),
+              });
+              final markupHistoryRef = _db.collection('wallet_history').doc();
+              transaction.set(
+                markupHistoryRef,
+                WalletHistoryModel(
+                  id: markupHistoryRef.id,
+                  userId: sale.userId,
+                  type: 'MARKUP_OUT',
+                  amount: totalMarkup,
+                  description:
+                      'Reversal: Status changed from COMPLETE to $newStatus',
+                  relatedRefId: sale.id,
+                  createdAt: DateTime.now(),
+                ).toMap(),
+              );
+            }
+
+            // 4. Revert Stats
             transaction.update(userRef, {
-              'total_sales_count': FieldValue.increment(1),
+              'total_sales_count': FieldValue.increment(-1),
               'total_commission_earned': FieldValue.increment(
-                sale.commissionAmount.toInt(),
+                -sale.commissionAmount.toInt(),
               ),
               'total_pulsa_earned': FieldValue.increment(
-                sale.pulsaBonusAmount.toInt(),
+                -sale.pulsaBonusAmount.toInt(),
               ),
             });
           } else {
@@ -362,12 +501,31 @@ class FirestoreService {
             final double earned = comm + markup;
 
             if (earned > 0) {
+              // Construct explicit message
+              String bodyMsg =
+                  'Selamat! Penjualan "${sale.details['product_name']}" Selesai.';
+
+              if (comm > 0) {
+                bodyMsg +=
+                    '\nKomisi: ${NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0).format(comm)}';
+              }
+              if (markup > 0) {
+                bodyMsg +=
+                    '\nMarkup: ${NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0).format(markup)}';
+              }
+              final double bonus = sale.pulsaBonusAmount;
+              if (bonus > 0) {
+                bodyMsg +=
+                    '\nBonus Pulsa: ${NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0).format(bonus)}';
+              }
+
+              bodyMsg += '\nTelah masuk ke saldo Anda.';
+
               sendNotification(
                 NotificationModel(
                   id: '',
                   title: 'Penjualan Selesai! 🎉',
-                  body:
-                      'Selamat! Penjualan "${sale.details['product_name']}" Selesai. Total pendapatan Rp ${NumberFormat.currency(locale: 'id', symbol: '', decimalDigits: 0).format(earned)} masuk saldo.',
+                  body: bodyMsg,
                   type: NotificationModel.typeSuccess,
                   recipientId: sale.userId,
                   relatedId: sale.id,
@@ -379,17 +537,24 @@ class FirestoreService {
         });
   }
 
-  Stream<List<SaleModel>> getUserSales(String userId) {
-    return _db
+  Stream<List<SaleModel>> getUserSales(String userId, {int? limit}) {
+    Query query = _db
         .collection('sales')
         .where('user_id', isEqualTo: userId)
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => SaleModel.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+        .orderBy('created_at', descending: true);
+
+    if (limit != null) {
+      query = query.limit(limit);
+    }
+
+    return query.snapshots().map(
+      (snapshot) => snapshot.docs
+          .map(
+            (doc) =>
+                SaleModel.fromMap(doc.data() as Map<String, dynamic>, doc.id),
+          )
+          .toList(),
+    );
   }
 
   // Check Helper: Count bonuses received this month
@@ -408,8 +573,14 @@ class FirestoreService {
     // Filter client side for > 0 because Firestore limited on range filters on different fields
     int count = 0;
     for (var doc in snapshot.docs) {
-      final pb = (doc.data()['pulsa_bonus_amount'] ?? 0) as num;
-      if (pb > 0) count++;
+      final data = doc.data();
+      final pb = (data['pulsa_bonus_amount'] ?? 0) as num;
+      final status = data['payment_status'];
+
+      // Ignore Canceled sales for bonus quota
+      if (pb > 0 && status != SaleModel.statusCanceled) {
+        count++;
+      }
     }
     return count;
   }
@@ -424,6 +595,33 @@ class FirestoreService {
         .get();
 
     return snapshot.count ?? 0;
+  }
+
+  // Check Helper: Get Monthly Stats (Count & Total)
+  Future<Map<String, num>> getUserSalesStatsThisMonth(String userId) async {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
+
+    final snapshot = await _db
+        .collection('sales')
+        .where('user_id', isEqualTo: userId)
+        .where('created_at', isGreaterThanOrEqualTo: startOfMonth)
+        .where('created_at', isLessThan: nextMonth)
+        .get();
+
+    int count = 0;
+    double total = 0;
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      // Only count valid sales (not cancelled)
+      if (data['payment_status'] != SaleModel.statusCanceled) {
+        count++;
+        total += (data['total_price'] ?? 0) as num;
+      }
+    }
+    return {'count': count, 'total': total};
   }
 
   Future<SaleModel?> getSale(String saleId) async {
@@ -570,23 +768,42 @@ class FirestoreService {
       final userDoc = await transaction.get(userRef);
       if (!userDoc.exists) throw Exception('User not found');
 
-      final currentBalance = claim.type == ClaimModel.typePulsa
-          ? (userDoc.data()?['pulsa_balance'] ?? 0)
-          : (userDoc.data()?['commission_balance'] ?? 0);
+      final commBalance = (userDoc.data()?['commission_balance'] ?? 0) as int;
+      final markupBalance = (userDoc.data()?['markup_balance'] ?? 0) as int;
+      final pulsaBalance = (userDoc.data()?['pulsa_balance'] ?? 0) as int;
 
-      if (currentBalance < claim.amount) {
-        throw Exception('Insufficient balance');
-      }
-
-      // Deduct Balance
       if (claim.type == ClaimModel.typePulsa) {
+        if (pulsaBalance < claim.amount) {
+          throw Exception('Saldo pulsa tidak cukup');
+        }
+
         transaction.update(userRef, {
           'pulsa_balance': FieldValue.increment(-claim.amount),
         });
       } else {
-        transaction.update(userRef, {
-          'commission_balance': FieldValue.increment(-claim.amount),
-        });
+        // Bank Transfer: Use Unified Cash (Commission + Markup)
+        final totalCash = commBalance + markupBalance;
+        if (totalCash < claim.amount) {
+          throw Exception('Saldo tunai tidak cukup');
+        }
+
+        int remaining = claim.amount;
+
+        // 1. Deduct from Commission first (Priority)
+        if (commBalance > 0) {
+          final toDeduct = remaining > commBalance ? commBalance : remaining;
+          transaction.update(userRef, {
+            'commission_balance': FieldValue.increment(-toDeduct),
+          });
+          remaining -= toDeduct;
+        }
+
+        // 2. Deduct remaining from Markup
+        if (remaining > 0) {
+          transaction.update(userRef, {
+            'markup_balance': FieldValue.increment(-remaining),
+          });
+        }
       }
 
       // Create Claim
@@ -684,5 +901,29 @@ class FirestoreService {
     return _db.collection('notifications').doc(notificationId).update({
       'isRead': true,
     });
+  }
+
+  Future<void> cleanupOldNotifications(String userId) async {
+    // Retention: 24 Hours
+    final cutoffDate = DateTime.now().subtract(const Duration(hours: 24));
+
+    // Query for old notifications for this user
+    final snapshot = await _db
+        .collection('notifications')
+        .where('recipientId', isEqualTo: userId)
+        .where('createdAt', isLessThan: cutoffDate)
+        .limit(500) // Safety limit
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final batch = _db.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      debugPrint(
+        'Cleaned up ${snapshot.docs.length} old notifications (older than 24h) for $userId',
+      );
+    }
   }
 }

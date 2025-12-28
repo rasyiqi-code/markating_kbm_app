@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:markating_kbm_app/src/core/models/global_settings_model.dart';
 import 'package:markating_kbm_app/src/core/services/data_seeder_service.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
+import 'package:markating_kbm_app/src/features/admin/widgets/settings/announcement_settings_card.dart';
+import 'package:markating_kbm_app/src/features/admin/widgets/settings/appearance_settings_card.dart';
+import 'package:markating_kbm_app/src/features/admin/widgets/settings/bonus_pulsa_settings_card.dart';
+import 'package:markating_kbm_app/src/features/admin/widgets/settings/commission_settings_card.dart';
+import 'package:markating_kbm_app/src/features/admin/widgets/settings/danger_zone_settings_card.dart';
+import 'package:markating_kbm_app/src/features/admin/widgets/settings/withdrawal_settings_card.dart';
 import 'package:provider/provider.dart';
 
 class GlobalSettingsScreen extends StatefulWidget {
@@ -17,7 +23,7 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
   late TextEditingController _bonusR2Controller;
   late TextEditingController _pulsaBonusController;
   late TextEditingController _minSalePulsaController;
-  late TextEditingController _minSalePulsaR2Controller; // New
+
   late TextEditingController _pulsaBonusR2Controller; // New
   late TextEditingController _minPayoutController;
   late TextEditingController _minPulsaWithdrawalController; // New
@@ -54,7 +60,6 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
     _bonusR2Controller = TextEditingController();
     _pulsaBonusController = TextEditingController();
     _minSalePulsaController = TextEditingController();
-    _minSalePulsaR2Controller = TextEditingController();
     _pulsaBonusR2Controller = TextEditingController();
     _minPayoutController = TextEditingController();
     _minPulsaWithdrawalController = TextEditingController();
@@ -77,8 +82,7 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
               .toStringAsFixed(0);
           _minSalePulsaController.text = settings.minSaleForPulsa
               .toStringAsFixed(0);
-          _minSalePulsaR2Controller.text = settings.minSaleForPulsaR2
-              .toStringAsFixed(0);
+
           _pulsaBonusR2Controller.text = settings.pulsaBonusAmountR2
               .toStringAsFixed(0);
           _minPayoutController.text = settings.minPayout.toStringAsFixed(0);
@@ -121,13 +125,13 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
         bonusPercentR2: double.tryParse(_bonusR2Controller.text) ?? 10,
         pulsaBonusAmount: double.tryParse(_pulsaBonusController.text) ?? 50000,
         minSaleForPulsa:
-            double.tryParse(_minSalePulsaController.text) ?? 5000000,
+            double.tryParse(_minSalePulsaController.text) ?? 10000000,
 
         pulsaBonusAmountR2:
             double.tryParse(_pulsaBonusR2Controller.text) ?? 50000,
         // Sync R2 Min Sale with Global (R1) Controller
         minSaleForPulsaR2:
-            double.tryParse(_minSalePulsaController.text) ?? 5000000,
+            double.tryParse(_minSalePulsaController.text) ?? 10000000,
 
         minPayout: double.tryParse(_minPayoutController.text) ?? 0,
         minPulsaWithdrawal:
@@ -198,7 +202,7 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Reset Semua Data?'),
         content: const Text(
-          'Tindakan ini akan MENGHAPUS semua Produk dan Riwayat Penjualan dan tidak dapat dibatalkan.\n\nApakah Anda yakin?',
+          'PERINGATAN: Tindakan ini akan MENGHAPUS SEMUA data (Produk, Penjualan, Riwayat Saldo, Notifikasi, dan Reset Saldo Pengguna) secara permanen.\n\nData yang dihapus TIDAK BISA dipulihkan. Apakah Anda yakin?',
         ),
         actions: [
           TextButton(
@@ -238,7 +242,7 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Pengaturan Global'),
         elevation: 0,
@@ -256,393 +260,82 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
                   'Tampilan & Menu',
                   Icons.dashboard_customize_rounded,
                 ),
-                _buildStyledCard(
-                  children: [
-                    SwitchListTile(
-                      title: const Text('Menu Penerbitan Buku (R1)'),
-                      subtitle: const Text('Tampilkan menu R1 di Dashboard'),
-                      value: _enableR1,
-                      onChanged: (val) => setState(() => _enableR1 = val),
-                    ),
-                    const Divider(),
-                    SwitchListTile(
-                      title: const Text('Menu KBM Creator (R2)'),
-                      subtitle: const Text('Tampilkan menu R2 di Dashboard'),
-                      value: _enableR2,
-                      onChanged: (val) => setState(() => _enableR2 = val),
-                    ),
-                  ],
+                AppearanceSettingsCard(
+                  enableR1: _enableR1,
+                  enableR2: _enableR2,
+                  onR1Changed: (val) => setState(() => _enableR1 = val),
+                  onR2Changed: (val) => setState(() => _enableR2 = val),
                 ),
                 const SizedBox(height: 24),
                 _buildSectionHeader(
                   'Pengumuman & Link',
                   Icons.campaign_rounded,
                 ),
-                _buildStyledCard(
-                  children: [
-                    TextFormField(
-                      controller: _latestInfoController,
-                      decoration: const InputDecoration(
-                        labelText: 'Info Terkini',
-                        hintText:
-                            'Contoh: Batas klaim pulsa bulan ini: Tgl 25.',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.info_outline),
-                      ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _webBaseUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'URL Dasar Web App',
-                        hintText: 'https://kbm-group-app.web.app',
-                        helperText: 'URL dasar untuk link Bio',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.link),
-                      ),
-                    ),
-                  ],
+                AnnouncementSettingsCard(
+                  latestInfoController: _latestInfoController,
+                  webBaseUrlController: _webBaseUrlController,
                 ),
                 const SizedBox(height: 24),
                 _buildSectionHeader(
                   'Komisi Penjualan (Tunai)',
                   Icons.monetization_on_rounded,
                 ),
-                _buildStyledCard(
-                  children: [
-                    SwitchListTile(
-                      title: const Text('Aktifkan Komisi Tunai R1'),
-                      value: _enableR1Commission,
-                      onChanged: (val) =>
-                          setState(() => _enableR1Commission = val),
-                    ),
-                    if (_enableR1Commission)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: TextFormField(
-                          controller: _bonusR1Controller,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Persentase Komisi R1',
-                            suffixText: '%',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    const Divider(),
-                    SwitchListTile(
-                      title: const Text('Aktifkan Komisi Tunai R2'),
-                      value: _enableR2Commission,
-                      onChanged: (val) =>
-                          setState(() => _enableR2Commission = val),
-                    ),
-                    if (_enableR2Commission)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: TextFormField(
-                          controller: _bonusR2Controller,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Persentase Komisi R2',
-                            suffixText: '%',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                  ],
+                CommissionSettingsCard(
+                  enableR1Commission: _enableR1Commission,
+                  enableR2Commission: _enableR2Commission,
+                  bonusR1Controller: _bonusR1Controller,
+                  bonusR2Controller: _bonusR2Controller,
+                  onR1CommissionChanged: (val) =>
+                      setState(() => _enableR1Commission = val),
+                  onR2CommissionChanged: (val) =>
+                      setState(() => _enableR2Commission = val),
                 ),
                 const SizedBox(height: 24),
                 _buildSectionHeader(
                   'Pengaturan Bonus Pulsa',
                   Icons.phonelink_ring_rounded,
                 ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // R1 Card
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.blue.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '1. Paket R1 (Penerbitan)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                                fontSize: 16,
-                              ),
-                            ),
-                            SwitchListTile(
-                              title: const Text('Aktifkan Bonus Pulsa R1'),
-                              value: _enableR1PulsaBonus,
-                              onChanged: (val) =>
-                                  setState(() => _enableR1PulsaBonus = val),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            TextFormField(
-                              controller: _pulsaBonusController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Nominal Bonus',
-                                prefixText: 'Rp ',
-                                border: OutlineInputBorder(),
-                                filled: true,
-                                fillColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // R2 Card
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.orange.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '2. Paket R2 (KBM Creator)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
-                                fontSize: 16,
-                              ),
-                            ),
-                            SwitchListTile(
-                              title: const Text('Aktifkan Bonus Pulsa R2'),
-                              value: _enableR2PulsaBonus,
-                              onChanged: (val) =>
-                                  setState(() => _enableR2PulsaBonus = val),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            TextFormField(
-                              controller: _pulsaBonusR2Controller,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Nominal Bonus',
-                                prefixText: 'Rp ',
-                                border: OutlineInputBorder(),
-                                filled: true,
-                                fillColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Global Rules
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.gavel_rounded,
-                            size: 20,
-                            color: Colors.grey,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Aturan & Batasan (Global)',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      SwitchListTile(
-                        title: const Text('Wajib Mencapai Target Penjualan'),
-                        subtitle: const Text(
-                          'Bonus hanya cair jika penjualan > nominal tertentu',
-                        ),
-                        value: _enableMinSalesLimit,
-                        onChanged: (val) =>
-                            setState(() => _enableMinSalesLimit = val),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      if (_enableMinSalesLimit)
-                        TextFormField(
-                          controller: _minSalePulsaController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Target Minimal Penjualan',
-                            prefixText: 'Rp ',
-                            border: OutlineInputBorder(),
-                            helperText:
-                                'Berlaku untuk paket R1 & R2 secara bersamaan',
-                          ),
-                        ),
-                      const Divider(height: 32),
-                      SwitchListTile(
-                        title: const Text('Batasi Frekuensi Bulanan'),
-                        subtitle: const Text(
-                          'Maksimal kali dapat bonus per bulan',
-                        ),
-                        value: _enableMaxPulsaBonusLimit,
-                        onChanged: (val) =>
-                            setState(() => _enableMaxPulsaBonusLimit = val),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      if (_enableMaxPulsaBonusLimit)
-                        TextFormField(
-                          controller: _maxPulsaBonusCountController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Maksimal (Kali)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      const SizedBox(height: 16),
-                      SwitchListTile(
-                        title: const Text('Syarat Riwayat Penjualan'),
-                        subtitle: const Text(
-                          'Minimal total transaksi sukses sebelumnya',
-                        ),
-                        value: _enableMinCompletedSalesLimit,
-                        onChanged: (val) =>
-                            setState(() => _enableMinCompletedSalesLimit = val),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      if (_enableMinCompletedSalesLimit)
-                        TextFormField(
-                          controller: _minCompletedSalesCountController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Minimal Transaksi Selesai',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                    ],
-                  ),
+                BonusPulsaSettingsCard(
+                  enableR1PulsaBonus: _enableR1PulsaBonus,
+                  enableR2PulsaBonus: _enableR2PulsaBonus,
+                  pulsaBonusController: _pulsaBonusController,
+                  pulsaBonusR2Controller: _pulsaBonusR2Controller,
+                  onR1PulsaBonusChanged: (val) =>
+                      setState(() => _enableR1PulsaBonus = val),
+                  onR2PulsaBonusChanged: (val) =>
+                      setState(() => _enableR2PulsaBonus = val),
+                  enableMinSalesLimit: _enableMinSalesLimit,
+                  minSalePulsaController: _minSalePulsaController,
+                  onMinSalesLimitChanged: (val) =>
+                      setState(() => _enableMinSalesLimit = val),
+                  enableMaxPulsaBonusLimit: _enableMaxPulsaBonusLimit,
+                  maxPulsaBonusCountController: _maxPulsaBonusCountController,
+                  onMaxPulsaBonusLimitChanged: (val) =>
+                      setState(() => _enableMaxPulsaBonusLimit = val),
+                  enableMinCompletedSalesLimit: _enableMinCompletedSalesLimit,
+                  minCompletedSalesCountController:
+                      _minCompletedSalesCountController,
+                  onMinCompletedSalesLimitChanged: (val) =>
+                      setState(() => _enableMinCompletedSalesLimit = val),
                 ),
                 const SizedBox(height: 24),
                 _buildSectionHeader(
                   'Penarikan Dana (Withdrawal)',
                   Icons.account_balance_wallet_rounded,
                 ),
-                _buildStyledCard(
-                  children: [
-                    TextFormField(
-                      controller: _minPayoutController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Min. Penarikan Bank',
-                        prefixText: 'Rp ',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _minPulsaWithdrawalController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Min. Klaim Pulsa',
-                        prefixText: 'Rp ',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Jadwal Penarikan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const SizedBox(height: 12),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final itemSize = (width - (6 * 8)) / 7;
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: List.generate(7, (index) {
-                            final day = index + 1;
-                            final dayName = [
-                              'S',
-                              'S',
-                              'R',
-                              'K',
-                              'J',
-                              'S',
-                              'M',
-                            ][index];
-                            final isSelected = _allowedWithdrawalDays.contains(
-                              day,
-                            );
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  if (isSelected) {
-                                    _allowedWithdrawalDays.remove(day);
-                                  } else {
-                                    _allowedWithdrawalDays.add(day);
-                                  }
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: itemSize,
-                                height: itemSize,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.blue
-                                      : Colors.transparent,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? Colors.blue
-                                        : Colors.grey[300]!,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    dayName,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Colors.grey[600],
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                        );
-                      },
-                    ),
-                  ],
+                WithdrawalSettingsCard(
+                  minPayoutController: _minPayoutController,
+                  minPulsaWithdrawalController: _minPulsaWithdrawalController,
+                  allowedWithdrawalDays: _allowedWithdrawalDays,
+                  onDayToggle: (day) {
+                    setState(() {
+                      if (_allowedWithdrawalDays.contains(day)) {
+                        _allowedWithdrawalDays.remove(day);
+                      } else {
+                        _allowedWithdrawalDays.add(day);
+                      }
+                    });
+                  },
                 ),
                 const SizedBox(height: 32),
                 SizedBox(
@@ -674,56 +367,10 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
                   Icons.warning_rounded,
                   color: Colors.red,
                 ),
-                _buildStyledCard(
-                  color: Colors.red[50],
-                  children: [
-                    const Text(
-                      'Manajemen Data Demo',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Gunakan fitur ini hanya untuk keperluan testing.',
-                      style: TextStyle(color: Colors.red, fontSize: 12),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.download),
-                            label: const Text('Isi Demo'),
-                            onPressed: _isLoading ? null : _seedData,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.green,
-                              side: const BorderSide(
-                                color: Colors.green,
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.delete_forever),
-                            label: const Text('Reset Data'),
-                            onPressed: _isLoading ? null : _resetData,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(
-                                color: Colors.red,
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                DangerZoneSettingsCard(
+                  isLoading: _isLoading,
+                  onSeedData: _seedData,
+                  onResetData: _resetData,
                 ),
                 const SizedBox(height: 32),
               ],
@@ -734,47 +381,24 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(
-    String title,
-    IconData icon, {
-    Color color = Colors.black87,
-  }) {
+  Widget _buildSectionHeader(String title, IconData icon, {Color? color}) {
+    final effectiveColor =
+        color ?? Theme.of(context).colorScheme.onSurface; // Colors.black87
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0, left: 4),
       child: Row(
         children: [
-          Icon(icon, color: color),
+          Icon(icon, color: effectiveColor),
           const SizedBox(width: 10),
           Text(
             title,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: effectiveColor,
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStyledCard({required List<Widget> children, Color? color}) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color ?? Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
       ),
     );
   }

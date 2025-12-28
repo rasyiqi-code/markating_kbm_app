@@ -49,7 +49,8 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
 
   // Limits Logic
   int _userMonthlyBonusCount = 0;
-  int _userCompletedSalesCount = 0;
+  int _monthlySalesCount = 0; // Accumulated count
+  double _monthlySalesTotal = 0; // Accumulated total
 
   // R1 Specific Fields
   final _penulisController = TextEditingController();
@@ -81,16 +82,16 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
       final monthlyBonuses = await firestore.getUserBonusCountThisMonth(
         user.id,
       );
-      final completedSales = await firestore.getUserCompletedSalesCount(
-        user.id,
-      );
+      // Fetch accumulated stats
+      final monthlyStats = await firestore.getUserSalesStatsThisMonth(user.id);
 
       setState(() {
         _agentName = (user.name != null && user.name!.isNotEmpty)
             ? user.name!
             : user.email.split('@').first;
         _userMonthlyBonusCount = monthlyBonuses;
-        _userCompletedSalesCount = completedSales;
+        _monthlySalesCount = monthlyStats['count'] as int;
+        _monthlySalesTotal = monthlyStats['total'] as double;
       });
       _calculateValues(); // Recalculate once we have stats
     }
@@ -138,31 +139,50 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
       _commissionAmount = 0;
     }
 
-    // R1 Pulsa Bonus
-    bool isEligibleForBonus = true;
-
-    // Check History Limit
-    if (_settings!.enableMinCompletedSalesLimit) {
-      if (_userCompletedSalesCount < _settings!.minCompletedSalesCount) {
-        isEligibleForBonus = false;
+    // R1 Pulsa Bonus (Accumulated Logic with Crossing Threshold)
+    if (_settings!.enableR1PulsaBonus) {
+      // 1. Check strict limit first
+      // Assuming 'enableMaxPulsaBonusLimit' is true by default now as per requirements
+      bool limitReached = false;
+      if (_settings!.enableMaxPulsaBonusLimit) {
+        if (_userMonthlyBonusCount >= _settings!.maxPulsaBonusCount) {
+          limitReached = true;
+        }
       }
-    }
 
-    // Check Monthly Frequency Limit
-    if (_settings!.enableMaxPulsaBonusLimit) {
-      if (_userMonthlyBonusCount >= _settings!.maxPulsaBonusCount) {
-        isEligibleForBonus = false;
+      if (limitReached) {
+        _pulsaBonusAmount = 0;
+      } else {
+        // 2. Check Crossing Logic
+        // We only award bonus if this SPECIFIC transaction makes them cross the line.
+
+        // Thresholds
+        final double targetNominal = _settings!.minSaleForPulsa;
+        final int targetCount = _settings!.minCompletedSalesCount;
+
+        // Condition A: Crosses Nominal Threshold
+        // Previous Total < Target AND New Total >= Target
+        bool crossesNominal =
+            (_monthlySalesTotal < targetNominal) &&
+            ((_monthlySalesTotal + total) >= targetNominal);
+
+        // Condition B: Crosses Count Threshold
+        // Previous Count < Target AND New Count (Current + 1) >= Target
+        bool crossesCount =
+            (_monthlySalesCount < targetCount) &&
+            ((_monthlySalesCount + 1) >= targetCount);
+
+        if (crossesNominal || crossesCount) {
+          _pulsaBonusAmount = _settings!.pulsaBonusAmount;
+        } else {
+          _pulsaBonusAmount = 0;
+        }
       }
-    }
-
-    if (_settings!.enableR1PulsaBonus &&
-        (!_settings!.enableMinSalesLimit ||
-            total >= _settings!.minSaleForPulsa) &&
-        isEligibleForBonus) {
-      _pulsaBonusAmount = _settings!.pulsaBonusAmount;
     } else {
       _pulsaBonusAmount = 0;
     }
+
+    if (mounted) setState(() {});
   }
 
   Future<void> _pickAndUploadProof() async {
@@ -210,8 +230,56 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
 
     setState(() => _isLoading = true);
 
+    final auth = Provider.of<AuthService>(context, listen: false);
+
+    // Validation: Check for Zero values
+    final double unitPrice =
+        double.tryParse(
+          _unitPriceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+        ) ??
+        0;
+    final int qty = int.tryParse(_qtyController.text) ?? 0;
+
+    if (unitPrice <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harga satuan tidak boleh 0'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    if (qty <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Jumlah tidak boleh 0'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final double total =
+        double.tryParse(
+          _totalPriceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+        ) ??
+        0;
+
+    if (total <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Total harga tidak valid'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
-      final auth = Provider.of<AuthService>(context, listen: false);
       final firestore = Provider.of<FirestoreService>(context, listen: false);
       final user = await auth.getCurrentUserDetails();
 
@@ -271,11 +339,13 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
           'judul_naskah': _judulNaskahController.text.trim(),
           'bonus_multiplier': _userMonthlyBonusCount < 5 ? 0 : 1, // Example
           'markup_per_qty': markupPerQty,
+          'house_type': 1, // Penerbitan
+          'agent_name': user.name ?? 'Unknown',
         },
         totalPrice: double.parse(
           _totalPriceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
         ),
-        paymentStatus: _paymentStatus,
+        paymentStatus: SaleModel.statusPending, // Force Pending
         bonusAmount: 0, // Calculated by server/admin later or here
         commissionAmount: _commissionAmount,
         commissionEarned: _commissionAmount.toInt(), // Save as int for legacy
@@ -292,6 +362,9 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
         createdAt: DateTime.now(),
         transactionProofUrl: _transactionProofUrl,
       );
+
+      // Add requested status for Admin visibility
+      sale.details['requested_status'] = _paymentStatus;
 
       await firestore.addSale(sale);
 
@@ -399,14 +472,14 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
                         const Icon(
                           Icons.badge_outlined,
                           size: 20,
-                          color: Colors.blue,
+                          color: Colors.blueAccent, // Brighter for dark mode
                         ),
                         const SizedBox(width: 12),
                         Text(
                           'Login sebagai: $_agentName',
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+                            color: Colors.blueAccent, // Brighter for dark mode
                           ),
                         ),
                       ],
@@ -484,7 +557,10 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _paymentStatus,
-                style: GoogleFonts.outfit(color: Colors.black87, fontSize: 16),
+                style: GoogleFonts.outfit(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 16,
+                ),
                 decoration: _inputDecoration(
                   'Status Pembayaran',
                   Icons.payment_outlined,
@@ -547,7 +623,7 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
                         child: Text(
                           'Pembayaran LUNAS. Komisi akan dihitung otomatis.',
                           style: GoogleFonts.outfit(
-                            color: Colors.green[800],
+                            color: Colors.greenAccent, // Visible on dark
                             fontSize: 13,
                           ),
                         ),
@@ -565,7 +641,9 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
                   height: 150,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: Theme.of(
+                      context,
+                    ).cardColor, // Replaces Colors.grey[100]
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade300),
                     image: _transactionProofUrl != null
@@ -584,13 +662,17 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
                                   Icon(
                                     Icons.cloud_upload_outlined,
                                     size: 40,
-                                    color: Colors.grey[600],
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant, // Colors.grey[600]
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Tap untuk unggah bukti transaksi',
                                     style: GoogleFonts.outfit(
-                                      color: Colors.grey[600],
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant, // Colors.grey[600]
                                     ),
                                   ),
                                 ],
@@ -672,7 +754,10 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
         color: Theme.of(context).colorScheme.onSurface,
         fontWeight: FontWeight.bold,
       ),
-      prefixIcon: Icon(icon, color: Colors.grey[600]),
+      prefixIcon: Icon(
+        icon,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ), // Colors.grey[600]
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -688,7 +773,7 @@ class _SalesEntryR1ScreenState extends State<SalesEntryR1Screen> {
       filled: true,
       fillColor:
           Theme.of(context).inputDecorationTheme.fillColor ??
-          Colors.grey[50], // Fallback if theme null
+          Theme.of(context).cardColor, // Fallback if theme null
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
     );
   }

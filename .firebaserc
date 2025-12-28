@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "marketing-kbm-app"
-  }
+    "default": "marketing-kbm-app",
+    "prooduction": "marketing-kbm-app"
+  },
+  "targets": {},
+  "etags": {}
 }

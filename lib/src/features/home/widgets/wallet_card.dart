@@ -46,17 +46,33 @@ class WalletCard extends StatelessWidget {
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+
                       children: [
-                        Text(
-                          'Saldo Komisi',
-                          style: GoogleFonts.outfit(
-                            color: Colors.grey[400],
-                            fontSize: 13,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'Saldo Tunai',
+                              style: GoogleFonts.outfit(
+                                color: Colors.grey[400],
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Tooltip(
+                              message: 'Gabungan Komisi & Markup',
+                              child: Icon(
+                                Icons.info_outline_rounded,
+                                size: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          AppFormatters.currency(user.commissionBalance),
+                          AppFormatters.currency(
+                            user.commissionBalance + user.markupBalance,
+                          ),
                           style: GoogleFonts.outfit(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -64,6 +80,17 @@ class WalletCard extends StatelessWidget {
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (user.markupBalance > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              '(Termasuk Markup ${AppFormatters.currency(user.markupBalance)})',
+                              style: GoogleFonts.outfit(
+                                color: Colors.greenAccent,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -98,16 +125,31 @@ class WalletCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Saldo Komisi',
-                          style: GoogleFonts.outfit(
-                            color: Colors.grey[400],
-                            fontSize: 13,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'Saldo Tunai',
+                              style: GoogleFonts.outfit(
+                                color: Colors.grey[400],
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Tooltip(
+                              message: 'Gabungan Komisi & Markup',
+                              child: Icon(
+                                Icons.info_outline_rounded,
+                                size: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          AppFormatters.currency(user.commissionBalance),
+                          AppFormatters.currency(
+                            user.commissionBalance + user.markupBalance,
+                          ),
                           style: GoogleFonts.outfit(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -115,6 +157,17 @@ class WalletCard extends StatelessWidget {
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (user.markupBalance > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              '(Termasuk Markup ${AppFormatters.currency(user.markupBalance)})',
+                              style: GoogleFonts.outfit(
+                                color: Colors.greenAccent,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),

@@ -25,11 +25,38 @@ class SalesHistoryScreen extends StatefulWidget {
 
 class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
   String? _userId;
+  final ScrollController _scrollController = ScrollController();
+  int _limitSales = 20;
+  bool _isLoadingSales = false;
 
   @override
   void initState() {
     super.initState();
     _loadUser();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        if (!_isLoadingSales) {
+          setState(() {
+            _limitSales += 20;
+            _isLoadingSales = true;
+          });
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) setState(() => _isLoadingSales = false);
+          });
+        }
+      }
+    }
   }
 
   Future<void> _loadUser() async {
@@ -63,15 +90,17 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
             ],
           ),
         ),
-        backgroundColor: Colors.grey[50],
+        // backgroundColor: Colors.grey[50], // Removed to allow Theme to control background
         body: TabBarView(
           children: [
-            // Tab 1: Sales (Existing Logic)
+            // Tab 1: Sales (Infinite Scroll)
             StreamBuilder<List<SaleModel>>(
-              stream: firestore.getUserSales(_userId!),
+              stream: firestore.getUserSales(_userId!, limit: _limitSales),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  if (_limitSales == 20) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
                 }
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -94,7 +123,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                           'Belum ada penjualan',
                           style: GoogleFonts.outfit(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant, // Colors.grey[600]
                           ),
                         ),
                       ],
@@ -103,9 +134,18 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 }
 
                 return ListView.builder(
+                  controller: _scrollController,
                   padding: const EdgeInsets.all(16),
-                  itemCount: sales.length,
+                  itemCount: sales.length + 1,
                   itemBuilder: (context, index) {
+                    if (index == sales.length) {
+                      return _limitSales > sales.length
+                          ? const SizedBox.shrink()
+                          : const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                    }
                     final sale = sales[index];
                     return _buildSaleCard(sale);
                   },
@@ -141,7 +181,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                           'Belum ada riwayat penarikan',
                           style: GoogleFonts.outfit(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant, // Colors.grey[600]
                           ),
                         ),
                       ],
@@ -233,7 +275,10 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                   ),
                   Text(
                     DateFormat('dd MMM yyyy, HH:mm').format(claim.createdAt),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -317,7 +362,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: isLunas ? Colors.green[50] : Colors.orange[50],
+                      color: isLunas
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isLunas ? Colors.green : Colors.orange,
@@ -336,7 +383,10 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                   ),
                   Text(
                     DateFormat('dd MMM yyyy, HH:mm').format(sale.createdAt),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -346,13 +396,16 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 houseName,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ), // Colors.grey[600]
               ),
               const Divider(height: 24),
               Row(
@@ -360,7 +413,10 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 children: [
                   Text(
                     'Total Harga',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   Text(
                     AppFormatters.currency(sale.totalPrice),
@@ -379,31 +435,45 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isComplete ? 'Masuk Saldo' : 'Estimasi Potensi Bonus',
+                        isComplete ? 'Masuk Saldo' : 'Estimasi Potensi',
                         style: TextStyle(
                           fontSize: 12,
                           color: isComplete
-                              ? Colors.grey[600]
+                              ? Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant // Colors.grey[600]
                               : Colors.orange[800],
-                          fontWeight: isComplete
-                              ? FontWeight.normal
-                              : FontWeight.bold,
                         ),
                       ),
+                      // Commission
                       Text(
-                        AppFormatters.currency(sale.bonusAmount),
+                        'Komisi: ${AppFormatters.currency(sale.commissionAmount)}',
                         style: GoogleFonts.outfit(
                           color: isComplete
-                              ? AppTheme.primaryColor
-                              : Colors.grey[500],
+                              ? Colors.green[700]
+                              : Colors.orange[800],
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          decoration: isComplete ? null : TextDecoration.none,
+                          fontSize: 14,
                         ),
                       ),
+                      // Bonus if exists
+                      if (sale.pulsaBonusAmount > 0)
+                        Text(
+                          'Bonus: ${AppFormatters.currency(sale.pulsaBonusAmount)}',
+                          style: GoogleFonts.outfit(
+                            color: isComplete
+                                ? Colors.blue[700]
+                                : Colors.orange[800],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
                     ],
                   ),
-                  Icon(Icons.chevron_right, color: Colors.grey[400]),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Theme.of(context).dividerColor,
+                  ), // Colors.grey[400]
                 ],
               ),
               if ((sale.totalMarkup ?? 0) > 0) ...[
@@ -431,15 +501,15 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.info_outline,
                         size: 16,
-                        color: Colors.blue[700],
+                        color: Colors.blueAccent,
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -579,9 +649,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor, // Colors.white
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           children: [
@@ -590,7 +660,7 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Theme.of(context).dividerColor, // Colors.grey[300]
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -675,7 +745,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               height: 200,
-                              color: Colors.grey[200],
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest, // Colors.grey[200]
                               child: const Center(
                                 child: Text('Gagal memuat gambar'),
                               ),
@@ -692,7 +764,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                     const SizedBox(height: 12),
                     _buildDetailRow(
                       'Nama Agen',
-                      sale.details['buyer_name'] ?? '-',
+                      sale.details['agent_name'] ??
+                          sale.details['buyer_name'] ??
+                          '-',
                     ),
                     const Divider(height: 32),
                     Container(
@@ -703,24 +777,63 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                             : Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             (sale.paymentStatus == 'COMPLETE')
                                 ? 'Masuk Saldo'
-                                : 'Potensi Bonus',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            AppFormatters.currency(sale.bonusAmount),
-                            style: GoogleFonts.outfit(
+                                : 'Potensi Pendapatan',
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: (sale.paymentStatus == 'COMPLETE')
-                                  ? AppTheme.primaryColor
-                                  : Colors.orange[800],
+                              fontSize: 16,
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSummaryRow(
+                            'Komisi Penjualan',
+                            sale.commissionAmount,
+                            isComplete: sale.paymentStatus == 'COMPLETE',
+                            color: Colors.green,
+                          ),
+                          if (sale.pulsaBonusAmount > 0)
+                            _buildSummaryRow(
+                              'Bonus Tambahan',
+                              sale.pulsaBonusAmount,
+                              isComplete: sale.paymentStatus == 'COMPLETE',
+                              color: Colors.blue,
+                            ),
+                          if ((sale.totalMarkup ?? 0) > 0)
+                            _buildSummaryRow(
+                              'Keuntungan Markup',
+                              (sale.totalMarkup ?? 0).toDouble(),
+                              isComplete: sale.paymentStatus == 'COMPLETE',
+                              color: Colors.purple,
+                            ),
+                          const Divider(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Total',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                AppFormatters.currency(
+                                  sale.commissionAmount +
+                                      sale.bonusAmount +
+                                      sale.pulsaBonusAmount +
+                                      (sale.totalMarkup ?? 0),
+                                ),
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: (sale.paymentStatus == 'COMPLETE')
+                                      ? AppTheme.primaryColor
+                                      : Colors.orange[800],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -738,13 +851,49 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
     );
   }
 
+  Widget _buildSummaryRow(
+    String label,
+    double amount, {
+    bool isComplete = false,
+    Color color = Colors.black,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            AppFormatters.currency(amount),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isComplete ? color : Colors.orange[800],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[600])),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ), // Colors.grey[600]
           Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),

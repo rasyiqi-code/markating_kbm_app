@@ -33,7 +33,8 @@ class _LinkBioPreviewScreenState extends State<LinkBioPreviewScreen> {
           lower.contains('email') ||
           lower.contains('mail') ||
           lower.contains('call') ||
-          lower.contains('phone');
+          lower.contains('phone') ||
+          lower.contains('facebook');
     }).toList();
   }
 

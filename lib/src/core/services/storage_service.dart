@@ -139,23 +139,30 @@ class StorageService {
         prefix: prefix ?? '',
         recursive: true,
       )) {
-        for (final obj in result.objects) {
-          // Generate a presigned URL for preview
-          final url = await _minio.presignedGetObject(
-            _bucketName,
-            obj.key!,
-            expires: 60 * 60, // 1 hour for preview
-          );
+        // Optimistic Parallel Loading of Presigned URLs
+        final batchFutures = result.objects.map((obj) async {
+          if (obj.key == null) return null;
 
-          items.add(
-            StorageItem(
+          try {
+            final url = await _minio.presignedGetObject(
+              _bucketName,
+              obj.key!,
+              expires: 60 * 60, // 1 hour for preview
+            );
+
+            return StorageItem(
               key: obj.key!,
               url: url,
               lastModified: obj.lastModified,
               size: obj.size ?? 0,
-            ),
-          );
-        }
+            );
+          } catch (e) {
+            return null; // Skip invalid items
+          }
+        });
+
+        final loadedItems = await Future.wait(batchFutures);
+        items.addAll(loadedItems.whereType<StorageItem>());
       }
     } catch (e) {
       debugPrint('Error listing files: $e');

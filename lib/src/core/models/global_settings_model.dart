@@ -39,9 +39,9 @@ class GlobalSettingsModel {
     required this.minPayout,
     this.bonusPercentR2 = 10.0,
     this.pulsaBonusAmount = 50000.0, // Treated as R1
-    this.minSaleForPulsa = 5000000.0, // Treated as R1
+    this.minSaleForPulsa = 10000000.0, // Updated Default 10jt
     this.pulsaBonusAmountR2 = 50000.0,
-    this.minSaleForPulsaR2 = 5000000.0,
+    this.minSaleForPulsaR2 = 10000000.0, // Updated Default 10jt
     this.minPulsaWithdrawal = 20000.0, // Default 20k
     this.enableR1 = true,
     this.enableR2 = true,
@@ -52,8 +52,8 @@ class GlobalSettingsModel {
     this.latestInfo = 'Batas klaim pulsa bulan ini: Tgl 25.',
     this.webBaseUrl = 'https://kbm-group-app.web.app',
     this.allowedWithdrawalDays = const [1, 2, 3, 4, 5, 6, 7],
-    this.enableMaxPulsaBonusLimit = false,
-    this.maxPulsaBonusCount = 1,
+    this.enableMaxPulsaBonusLimit = true, // Default enabled
+    this.maxPulsaBonusCount = 1, // Default 1x
     this.enableMinCompletedSalesLimit = false,
     this.minCompletedSalesCount = 5,
     this.enableMinSalesLimit = true,
@@ -65,7 +65,7 @@ class GlobalSettingsModel {
       minPayout: (data['min_payout'] ?? 5000000).toDouble(),
       bonusPercentR2: (data['bonus_percent_r2'] ?? 10).toDouble(),
       pulsaBonusAmount: (data['pulsa_bonus_amount'] ?? 50000).toDouble(),
-      minSaleForPulsa: (data['min_sale_for_pulsa'] ?? 5000000).toDouble(),
+      minSaleForPulsa: (data['min_sale_for_pulsa'] ?? 10000000).toDouble(),
       enableR1: data['enable_r1'] ?? true,
       enableR2: data['enable_r2'] ?? true,
       enableR1Commission: data['enable_r1_commission'] ?? true,
@@ -80,7 +80,8 @@ class GlobalSettingsModel {
       allowedWithdrawalDays: List<int>.from(
         data['allowed_withdrawal_days'] ?? [1, 2, 3, 4, 5, 6, 7],
       ),
-      enableMaxPulsaBonusLimit: data['enable_max_pulsa_bonus_limit'] ?? false,
+      enableMaxPulsaBonusLimit:
+          data['enable_max_pulsa_bonus_limit'] ?? true, // Default true
       maxPulsaBonusCount: data['max_pulsa_bonus_count'] ?? 1,
       enableMinCompletedSalesLimit:
           data['enable_min_completed_sales_limit'] ?? false,

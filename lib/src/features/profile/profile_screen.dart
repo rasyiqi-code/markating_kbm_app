@@ -101,9 +101,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           Text(
             _currentUser?.role.toUpperCase() ?? 'USER',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ), // Colors.grey
           ),
           const SizedBox(height: 32),
 
@@ -198,7 +198,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Text(
           title,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Colors.grey[600],
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant, // Colors.grey[600]
             fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
           ),
@@ -221,7 +223,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+        side: BorderSide(
+          color: Theme.of(context).dividerColor,
+        ), // Colors.grey.withValues(alpha: 0.2)
       ),
       child: ListTile(
         onTap: onTap,
@@ -236,9 +240,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           subtitle,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ), // Colors.grey[600]
         ),
-        trailing: const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+        trailing: Icon(
+          Icons.chevron_right,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ), // Colors.grey
       ),
     );
   }
@@ -320,10 +331,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
+                  final bankName = bankNameController.text.trim();
+                  final accNumber = accNumberController.text.trim();
+                  final holderName = holderNameController.text.trim();
+
+                  if (bankName.isEmpty ||
+                      accNumber.isEmpty ||
+                      holderName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Semua field harus diisi')),
+                    );
+                    return;
+                  }
+
+                  if (accNumber.length < 8) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Nomor rekening minimal 8 digit'),
+                      ),
+                    );
+                    return;
+                  }
+
                   final newDetails = {
-                    'bank_name': bankNameController.text.trim(),
-                    'account_number': accNumberController.text.trim(),
-                    'account_holder': holderNameController.text.trim(),
+                    'bank_name': bankName,
+                    'account_number': accNumber,
+                    'account_holder': holderName,
                     'phone': phoneController.text.trim(),
                   };
 
@@ -402,7 +435,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(
+        context,
+      ).scaffoldBackgroundColor, // Colors.white
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -472,7 +507,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               child: CircleAvatar(
                                 radius: 48,
-                                backgroundColor: Colors.grey[100],
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest, // Colors.grey[100]
                                 foregroundImage: _newProfileImageBytes != null
                                     ? MemoryImage(_newProfileImageBytes!)
                                     : (_currentUser?.photoUrl != null
@@ -487,7 +524,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ? Icon(
                                         Icons.person,
                                         size: 40,
-                                        color: Colors.grey[400],
+                                        color: Theme.of(context).iconTheme.color
+                                            ?.withValues(
+                                              alpha: 0.5,
+                                            ), // Colors.grey[400]
                                       )
                                     : null,
                               ),
@@ -522,7 +562,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Alamat Email',
                         border: const OutlineInputBorder(),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest, // Colors.grey[100]
                         helperText: 'Email tidak dapat diubah',
                       ),
                     ),
@@ -633,8 +675,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 );
                                 return;
                               }
-
-                              setDialogState(() => _isUploading = true);
 
                               try {
                                 final firestore = Provider.of<FirestoreService>(

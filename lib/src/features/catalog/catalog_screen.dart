@@ -46,6 +46,7 @@ class _CatalogScreenState extends State<CatalogScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text(
           'Katalog Produk',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),

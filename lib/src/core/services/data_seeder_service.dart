@@ -130,11 +130,18 @@ class DataSeederService {
       batch.delete(doc.reference);
     }
 
-    // 5. Reset User Balances & Stats
+    // 5. Delete all notifications
+    final notifications = await _firestore.collection('notifications').get();
+    for (var doc in notifications.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // 6. Reset User Balances & Stats
     final users = await _firestore.collection('users').get();
     for (var doc in users.docs) {
       batch.update(doc.reference, {
         'commission_balance': 0,
+        'markup_balance': 0,
         'pulsa_balance': 0,
         'total_sales_count': 0,
         'total_commission_earned': 0,

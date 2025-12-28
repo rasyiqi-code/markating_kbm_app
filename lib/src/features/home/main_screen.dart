@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
@@ -16,6 +15,11 @@ import 'package:markating_kbm_app/src/features/profile/profile_screen.dart';
 // Admin Screens
 import 'package:markating_kbm_app/src/features/admin/product_management_screen.dart'; // Manage Catalog
 import 'package:markating_kbm_app/src/features/admin/admin_home_screen.dart'; // NEW Admin Home
+
+// Widgets
+import 'package:markating_kbm_app/src/features/home/widgets/main_bottom_nav_bar.dart';
+import 'package:markating_kbm_app/src/features/home/widgets/marketing_fab_menu.dart';
+import 'package:markating_kbm_app/src/features/home/widgets/admin_fab_menu.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -107,7 +111,11 @@ class _MainScreenState extends State<MainScreen> {
           ),
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerDocked,
-          bottomNavigationBar: _buildBottomBar(isAdmin),
+          bottomNavigationBar: MainBottomNavigationBar(
+            currentIndex: _currentIndex,
+            isAdmin: isAdmin,
+            onTap: (index) => setState(() => _currentIndex = index),
+          ),
         );
       },
     );
@@ -131,151 +139,11 @@ class _MainScreenState extends State<MainScreen> {
     ];
   }
 
-  Widget _buildBottomBar(bool isAdmin) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Container(
-        height: 70,
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // 1. Home
-            Expanded(
-              child: _buildNavItem(0, Icons.home_rounded, Icons.home_outlined),
-            ),
-
-            // 2. Bio
-            Expanded(child: _buildNavItem(1, Icons.link_rounded, Icons.link)),
-
-            // 3. Gap for FAB
-            const SizedBox(width: 48),
-
-            // 4. Catalog / Manage Catalog
-            Expanded(
-              child: _buildNavItem(
-                2,
-                isAdmin ? Icons.edit_note_rounded : Icons.menu_book_rounded,
-                isAdmin ? Icons.edit_note_outlined : Icons.menu_book_outlined,
-              ),
-            ),
-
-            // 5. Profile
-            Expanded(
-              child: _buildNavItem(
-                3,
-                Icons.person_rounded,
-                Icons.person_outline_rounded,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    int index,
-    IconData selectedIcon,
-    IconData unselectedIcon,
-  ) {
-    // Note: pages list has 4 items. Index 0,1 are Left. Index 2,3 are Right.
-    // FAB is visually "Index 2.5", effectively splitting them.
-    final isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        height: 50,
-        width: 50,
-        alignment: Alignment.center,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                : Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            isSelected ? selectedIcon : unselectedIcon,
-            color: isSelected
-                ? AppTheme.primaryColor
-                : Theme.of(context).unselectedWidgetColor,
-            size: 28,
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showMarketingFabMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            24 + MediaQuery.of(context).padding.bottom,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Quick Sale',
-                style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildFabOption(
-                      context,
-                      'Penerbitan',
-                      Icons.book_rounded,
-                      Colors.blue,
-                      '/sales/r1',
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildFabOption(
-                      context,
-                      'KBM Creator',
-                      Icons.brush_rounded,
-                      Colors.purple,
-                      '/sales/r2',
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (context) => const MarketingFabMenu(),
     );
   }
 
@@ -283,131 +151,7 @@ class _MainScreenState extends State<MainScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            24 + MediaQuery.of(context).padding.bottom,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Admin Quick Actions',
-                style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  // Placeholder routes for admin transactions
-                  Expanded(
-                    child: _buildFabOption(
-                      context,
-                      'Trans Penerbitan',
-                      Icons.assignment_rounded,
-                      Colors.blue,
-                      '/admin/transactions/r1',
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildFabOption(
-                      context,
-                      'Trans Creator',
-                      Icons.assignment_ind_rounded,
-                      Colors.purple,
-                      '/admin/transactions/r2',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildFabOption(
-                      context,
-                      'Manage Agents',
-                      Icons.people_alt_rounded,
-                      Colors.teal,
-                      '/admin/users',
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildFabOption(
-                      context,
-                      'Withdrawals',
-                      Icons.account_balance_wallet_rounded,
-                      Colors.orange,
-                      '/admin/withdrawals',
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFabOption(
-    BuildContext context,
-    String title,
-    IconData icon,
-    MaterialColor color,
-    String route,
-  ) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        Navigator.pushNamed(
-          context,
-          route,
-        ); // Handle named routes if not exist later
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? color.shade900.withValues(alpha: 0.3)
-              : color.shade50,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? color.shade700
-                : color.shade100,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color.shade700, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? color.shade100
-                    : color.shade900,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
+      builder: (context) => const AdminFabMenu(),
     );
   }
 }

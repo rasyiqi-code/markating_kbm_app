@@ -73,7 +73,7 @@ class AuthService {
       // Create user doc
       await _firestore.collection('users').doc(cred.user!.uid).set({
         'email': email,
-        'role': role,
+        'role': 'marketing', // Enforce default role for security
         'username': username,
         'name': username, // Default name to username
         'created_at': FieldValue.serverTimestamp(),

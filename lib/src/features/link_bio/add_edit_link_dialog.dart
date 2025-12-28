@@ -30,7 +30,10 @@ class _AddEditLinkDialogState extends State<AddEditLinkDialog> {
     {'id': 'facebook', 'icon': Icons.facebook},
     {'id': 'twitter', 'icon': Icons.alternate_email},
     {'id': 'store', 'icon': Icons.storefront},
+    {'id': 'store', 'icon': Icons.storefront},
     {'id': 'book', 'icon': Icons.book_outlined},
+    {'id': 'email', 'icon': Icons.email_outlined},
+    {'id': 'phone', 'icon': Icons.phone},
     {'id': 'other', 'icon': Icons.link},
   ];
 
@@ -42,7 +45,60 @@ class _AddEditLinkDialogState extends State<AddEditLinkDialog> {
       _urlController.text = widget.link!.url;
       _selectedIcon = widget.link!.icon;
       _isActive = widget.link!.isActive;
+    } else {
+      _selectedIcon = 'web';
     }
+
+    _urlController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  String _getHintText() {
+    switch (_selectedIcon) {
+      case 'whatsapp':
+        return 'Nomor WhatsApp (cth: 62812...)';
+      case 'email':
+        return 'Alamat Email (cth: nama@email.com)';
+      case 'phone':
+        return 'Nomor Telepon (cth: 0812...)';
+      case 'instagram':
+        return 'Username / Link (cth: instagram.com/user)';
+      default:
+        return 'URL (https://...)';
+    }
+  }
+
+  String _formatUrl(String input) {
+    if (input.isEmpty) return input;
+
+    input = input.trim();
+
+    // Auto-format based on type
+    if (_selectedIcon == 'whatsapp') {
+      // Remove symbols
+      String clean = input.replaceAll(RegExp(r'[^\d]'), '');
+      if (clean.startsWith('0')) clean = '62${clean.substring(1)}';
+      if (!clean.startsWith('62')) clean = '62$clean';
+      return 'https://wa.me/$clean';
+    }
+
+    if (_selectedIcon == 'email') {
+      if (!input.startsWith('mailto:')) return 'mailto:$input';
+      return input;
+    }
+
+    if (_selectedIcon == 'phone') {
+      if (!input.startsWith('tel:')) return 'tel:$input';
+      return input;
+    }
+
+    // Standard URL formatting
+    if (!input.startsWith('http://') && !input.startsWith('https://')) {
+      return 'https://$input';
+    }
+
+    return input;
   }
 
   Future<void> _saveLink() async {
@@ -61,7 +117,7 @@ class _AddEditLinkDialogState extends State<AddEditLinkDialog> {
         id: widget.link?.id ?? '', // ID handled by firestore for add
         userId: user.id,
         label: _labelController.text.trim(),
-        url: _urlController.text.trim(),
+        url: _formatUrl(_urlController.text),
         icon: _selectedIcon,
         isActive: _isActive,
         createdAt: widget.link?.createdAt ?? DateTime.now(),
@@ -121,12 +177,19 @@ class _AddEditLinkDialogState extends State<AddEditLinkDialog> {
               TextFormField(
                 controller: _urlController,
                 decoration: InputDecoration(
-                  labelText: 'URL (https://...)',
+                  labelText: _getHintText(),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   prefixIcon: const Icon(Icons.link),
+                  helperText: 'Format akan disesuaikan otomatis saat disimpan',
                 ),
+                keyboardType:
+                    _selectedIcon == 'whatsapp' || _selectedIcon == 'phone'
+                    ? TextInputType.phone
+                    : (_selectedIcon == 'email'
+                          ? TextInputType.emailAddress
+                          : TextInputType.url),
                 validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 24),

@@ -4,9 +4,13 @@ import 'package:markating_kbm_app/src/core/services/storage_service.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ImageManagementScreen extends StatefulWidget {
-  const ImageManagementScreen({super.key});
+  final bool isPicker;
+
+  const ImageManagementScreen({super.key, this.isPicker = false});
 
   @override
   State<ImageManagementScreen> createState() => _ImageManagementScreenState();
@@ -92,14 +96,19 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
       // Copy keys to avoid modification during iteration issues
       final keysToDelete = List<String>.from(_selectedKeys);
 
-      for (final key in keysToDelete) {
+      // Parallel Deletion for Speed
+      final batchDelete = keysToDelete.map((key) async {
         try {
           await storage.deleteFile(key);
-          successCount++;
+          return true;
         } catch (e) {
           debugPrint('Failed to delete $key: $e');
+          return false;
         }
-      }
+      });
+
+      final results = await Future.wait(batchDelete);
+      successCount = results.where((success) => success).length;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,12 +121,46 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      if (!mounted) return;
+      setState(() => _isLoading = true);
+
+      try {
+        final storage = Provider.of<StorageService>(context, listen: false);
+        final file = File(pickedFile.path);
+
+        // Upload to 'admin_uploads' folder
+        await storage.uploadFile(file, 'admin_uploads');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gambar berhasil diunggah!')),
+          );
+          _loadImages(); // Refresh list
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Gagal unggah: $e')));
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _isSelectionMode
+          widget.isPicker
+              ? 'Pilih Gambar'
+              : _isSelectionMode
               ? '${_selectedKeys.length} Dipilih'
               : 'Kelola Gambar',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
@@ -134,15 +177,22 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
               )
             : null,
         actions: [
-          if (_isSelectionMode)
+          if (!widget.isPicker && _isSelectionMode)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: _deleteSelected,
             )
-          else
+          else if (!widget.isPicker)
             IconButton(icon: const Icon(Icons.refresh), onPressed: _loadImages),
         ],
       ),
+      floatingActionButton: !_isSelectionMode
+          ? FloatingActionButton(
+              onPressed: _pickAndUploadImage,
+              backgroundColor: AppTheme.primaryColor,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _images.isEmpty
@@ -168,8 +218,15 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
                   final isSelected = _selectedKeys.contains(item.key);
 
                   return GestureDetector(
-                    onLongPress: () => _toggleSelection(item.key),
+                    onLongPress: () {
+                      if (!widget.isPicker) _toggleSelection(item.key);
+                    },
                     onTap: () {
+                      if (widget.isPicker) {
+                        Navigator.pop(context, item.url);
+                        return;
+                      }
+
                       if (_isSelectionMode) {
                         _toggleSelection(item.key);
                       } else {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markating_kbm_app/src/core/utils/currency_input_formatter.dart';
 
-class MarkupInputField extends StatelessWidget {
+class MarkupInputField extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
   final int quantity; // To calculate total markup prediction
@@ -15,23 +15,45 @@ class MarkupInputField extends StatelessWidget {
   });
 
   @override
+  State<MarkupInputField> createState() => _MarkupInputFieldState();
+}
+
+class _MarkupInputFieldState extends State<MarkupInputField> {
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild when text changes to update total calculation
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Calculate total markup for preview
     int markupPerItem = 0;
-    String cleanText = controller.text.replaceAll(RegExp(r'[^0-9]'), '');
+    String cleanText = widget.controller.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (cleanText.isNotEmpty) {
       markupPerItem = int.parse(cleanText);
     }
-    int totalEstimated = markupPerItem * quantity;
+    int totalEstimated = markupPerItem * widget.quantity;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: controller,
+          controller: widget.controller,
           keyboardType: TextInputType.number,
           inputFormatters: [CurrencyInputFormatter()],
-          onChanged: onChanged,
+          onChanged: widget.onChanged,
           decoration: InputDecoration(
             labelText: 'Markup Harga (Per Item)',
             hintText: '0',
@@ -70,7 +92,7 @@ class MarkupInputField extends StatelessWidget {
                           color: Colors.green,
                         ),
                       ),
-                      TextSpan(text: ' ($quantity item)'),
+                      TextSpan(text: ' (${widget.quantity} item)'),
                     ],
                   ),
                 ),
