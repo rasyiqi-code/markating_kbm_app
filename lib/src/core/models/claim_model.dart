@@ -7,6 +7,8 @@ class ClaimModel {
   final String type; // 'BANK_TRANSFER' or 'PULSA'
   final String status; // 'PENDING', 'PAID', 'REJECTED'
   final Map<String, dynamic> bankDetails;
+  final int deductedCommission; // New: Track amount from Commission
+  final int deductedMarkup; // New: Track amount from Markup
   final DateTime createdAt;
 
   static const String statusPending = 'PENDING';
@@ -23,6 +25,8 @@ class ClaimModel {
     required this.type,
     required this.status,
     required this.bankDetails,
+    this.deductedCommission = 0,
+    this.deductedMarkup = 0,
     required this.createdAt,
   });
 
@@ -34,6 +38,8 @@ class ClaimModel {
       type: data['type'] ?? typeBank,
       status: data['status'] ?? statusPending,
       bankDetails: Map<String, dynamic>.from(data['bank_details'] ?? {}),
+      deductedCommission: (data['deducted_commission'] ?? 0).toInt(),
+      deductedMarkup: (data['deducted_markup'] ?? 0).toInt(),
       createdAt: (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -45,6 +51,8 @@ class ClaimModel {
       'type': type,
       'status': status,
       'bank_details': bankDetails,
+      'deducted_commission': deductedCommission,
+      'deducted_markup': deductedMarkup,
       'created_at': Timestamp.fromDate(createdAt),
     };
   }

@@ -106,7 +106,8 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
     // Balance Check
     int currentBalance = 0;
     if (widget.allowedType == ClaimModel.typeBank) {
-      currentBalance = widget.user.commissionBalance;
+      currentBalance =
+          widget.user.commissionBalance + widget.user.markupBalance;
     } else if (widget.allowedType == 'markup') {
       currentBalance = widget.user.markupBalance;
     } else {
@@ -267,7 +268,8 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
                       Text(
                         AppFormatters.currency(
                           isBank
-                              ? widget.user.commissionBalance
+                              ? (widget.user.commissionBalance +
+                                    widget.user.markupBalance)
                               : widget.user.pulsaBalance,
                         ),
                         style: GoogleFonts.outfit(
@@ -321,7 +323,8 @@ class _WithdrawalRequestScreenState extends State<WithdrawalRequestScreen> {
                       onPressed: isAllowedDay
                           ? () {
                               final max = isBank
-                                  ? widget.user.commissionBalance
+                                  ? (widget.user.commissionBalance +
+                                        widget.user.markupBalance)
                                   : widget.user.pulsaBalance;
                               setState(() {
                                 _amountController.text = max.toStringAsFixed(0);

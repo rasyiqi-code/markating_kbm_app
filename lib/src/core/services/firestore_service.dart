@@ -433,6 +433,7 @@ class FirestoreService {
                 'pulsa_balance': FieldValue.increment(
                   -sale.pulsaBonusAmount.toInt(),
                 ),
+                'last_pulsa_bonus_at': FieldValue.delete(), // Reset eligibility
               });
               final pulsaHistoryRef = _db.collection('wallet_history').doc();
               transaction.set(
@@ -772,6 +773,9 @@ class FirestoreService {
       final markupBalance = (userDoc.data()?['markup_balance'] ?? 0) as int;
       final pulsaBalance = (userDoc.data()?['pulsa_balance'] ?? 0) as int;
 
+      int deductedCommission = 0;
+      int deductedMarkup = 0;
+
       if (claim.type == ClaimModel.typePulsa) {
         if (pulsaBalance < claim.amount) {
           throw Exception('Saldo pulsa tidak cukup');
@@ -792,6 +796,7 @@ class FirestoreService {
         // 1. Deduct from Commission first (Priority)
         if (commBalance > 0) {
           final toDeduct = remaining > commBalance ? commBalance : remaining;
+          deductedCommission = toDeduct;
           transaction.update(userRef, {
             'commission_balance': FieldValue.increment(-toDeduct),
           });
@@ -800,14 +805,19 @@ class FirestoreService {
 
         // 2. Deduct remaining from Markup
         if (remaining > 0) {
+          deductedMarkup = remaining;
           transaction.update(userRef, {
             'markup_balance': FieldValue.increment(-remaining),
           });
         }
       }
 
-      // Create Claim
-      transaction.set(claimRef, claim.toMap());
+      // Create Claim with Split Info
+      final claimMap = claim.toMap();
+      claimMap['deducted_commission'] = deductedCommission;
+      claimMap['deducted_markup'] = deductedMarkup;
+
+      transaction.set(claimRef, claimMap);
 
       // History
       final history = WalletHistoryModel(
@@ -843,9 +853,29 @@ class FirestoreService {
           'pulsa_balance': FieldValue.increment(claim.amount),
         });
       } else {
-        transaction.update(userRef, {
-          'commission_balance': FieldValue.increment(claim.amount),
-        });
+        // Refund based on recorded deductions.
+        // If legacy claim (0 deductions logged), fallback to Commission (safe default)
+        if (claim.deductedCommission > 0) {
+          transaction.update(userRef, {
+            'commission_balance': FieldValue.increment(
+              claim.deductedCommission,
+            ),
+          });
+        }
+        if (claim.deductedMarkup > 0) {
+          transaction.update(userRef, {
+            'markup_balance': FieldValue.increment(claim.deductedMarkup),
+          });
+        }
+
+        // Fallback for legacy claims where tracked amounts might be 0 but amount > 0
+        if (claim.deductedCommission == 0 &&
+            claim.deductedMarkup == 0 &&
+            claim.amount > 0) {
+          transaction.update(userRef, {
+            'commission_balance': FieldValue.increment(claim.amount),
+          });
+        }
       }
 
       // Update Status

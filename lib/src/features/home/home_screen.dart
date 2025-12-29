@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:markating_kbm_app/src/core/models/user_model.dart';
+import 'package:markating_kbm_app/src/core/models/claim_model.dart';
 import 'package:markating_kbm_app/src/core/services/auth_service.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/features/home/widgets/dashboard_stats.dart';
@@ -72,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (context) => WithdrawalRequestScreen(
                         user: user,
-                        allowedType: 'commission',
+                        allowedType: ClaimModel.typeBank,
                       ),
                     ),
                   );
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (context) => WithdrawalRequestScreen(
                         user: user,
-                        allowedType: 'pulsa',
+                        allowedType: ClaimModel.typePulsa,
                       ),
                     ),
                   );
