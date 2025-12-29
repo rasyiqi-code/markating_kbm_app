@@ -47,40 +47,59 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white, // Clean white background for logos
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo Container
-              Container(
-                padding: const EdgeInsets.all(20),
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      'assets/logo_kbm_red.png',
-                      height: 100,
-                      fit: BoxFit.contain,
+      body: Stack(
+        children: [
+          Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo Container
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/logo_kbm_red.png',
+                          height: 100,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(height: 30),
+                        Image.asset(
+                          'assets/logo_kbm_blue.png',
+                          height: 120, // Slightly larger as it usually has text
+                          fit: BoxFit.contain,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 30),
-                    Image.asset(
-                      'assets/logo_kbm_blue.png',
-                      height: 120, // Slightly larger as it usually has text
-                      fit: BoxFit.contain,
-                    ),
-                  ],
+                  ),
+                  const SizedBox(height: 50),
+                  const CircularProgressIndicator(
+                    color: Color(0xFFD32F2F), // KBM Red
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 24,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Text(
+                'v1.1.0',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 50),
-              const CircularProgressIndicator(
-                color: Color(0xFFD32F2F), // KBM Red
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
