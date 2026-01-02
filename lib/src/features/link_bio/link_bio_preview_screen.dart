@@ -143,24 +143,47 @@ class _LinkBioPreviewScreenState extends State<LinkBioPreviewScreen> {
                                     ),
                                   ],
                                 ),
-                                child: CircleAvatar(
-                                  radius: 46,
-                                  backgroundColor: Colors.white,
-                                  backgroundImage: widget.user.photoUrl != null
-                                      ? NetworkImage(widget.user.photoUrl!)
-                                      : null,
-                                  child: widget.user.photoUrl == null
-                                      ? Text(
-                                          displayName.isNotEmpty
-                                              ? displayName[0].toUpperCase()
-                                              : '?',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 36,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primaryColor,
+                                child: Container(
+                                  width: 92,
+                                  height: 92,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                  child: ClipOval(
+                                    child: widget.user.photoUrl != null
+                                        ? Image.network(
+                                            widget.user.photoUrl!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              debugPrint('Image Load Error: $error');
+                                              return Center(
+                                                child: Text(
+                                                  displayName.isNotEmpty
+                                                      ? displayName[0].toUpperCase()
+                                                      : '?',
+                                                  style: GoogleFonts.outfit(
+                                                    fontSize: 36,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppTheme.primaryColor,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        : Center(
+                                            child: Text(
+                                              displayName.isNotEmpty
+                                                  ? displayName[0].toUpperCase()
+                                                  : '?',
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 36,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppTheme.primaryColor,
+                                              ),
+                                            ),
                                           ),
-                                        )
-                                      : null,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 16),

@@ -61,9 +61,15 @@ class _BonusEligibilityCardState extends State<BonusEligibilityCard> {
         final settings = snapshot.data!;
         if (!settings.enableR1PulsaBonus) return const SizedBox.shrink();
 
-        final bool isTargetMet = _monthlySalesTotal >= settings.minSaleForPulsa;
+        // Calculate eligibility based on ENABLED rules only
+        final bool isTargetMet =
+            settings.enableMinSalesLimit &&
+            (_monthlySalesTotal >= settings.minSaleForPulsa);
         final bool isCountMet =
-            _monthlySalesCount >= settings.minCompletedSalesCount;
+            settings.enableMinCompletedSalesLimit &&
+            (_monthlySalesCount >= settings.minCompletedSalesCount);
+        
+        // Final eligibility: Must meet at least one ENABLED target
         final bool isEligible = (isTargetMet || isCountMet);
         final bool isBonusLimitReached =
             _userMonthlyBonusCount >= settings.maxPulsaBonusCount;
@@ -175,25 +181,66 @@ class _BonusEligibilityCardState extends State<BonusEligibilityCard> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    _buildProgressItem(
-                      icon: Icons.monetization_on_rounded,
-                      label: 'Target Penjualan',
-                      current: _monthlySalesTotal,
-                      target: settings.minSaleForPulsa.toDouble(),
-                      isCurrency: true,
-                      isMet: isTargetMet,
-                      accentColor: Colors.blue,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildProgressItem(
-                      icon: Icons.receipt_long_rounded,
-                      label: 'Jumlah Transaksi',
-                      current: _monthlySalesCount.toDouble(),
-                      target: settings.minCompletedSalesCount.toDouble(),
-                      isCurrency: false,
-                      isMet: isCountMet,
-                      accentColor: Colors.purple,
-                    ),
+                    if (settings.enableMinSalesLimit) ...[
+                      _buildProgressItem(
+                        icon: Icons.monetization_on_rounded,
+                        label: 'Target Penjualan',
+                        current: _monthlySalesTotal,
+                        target: settings.minSaleForPulsa.toDouble(),
+                        isCurrency: true,
+                        isMet: isTargetMet,
+                        accentColor: Colors.blue,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (settings.enableMinCompletedSalesLimit) ...[
+                      _buildProgressItem(
+                        icon: Icons.receipt_long_rounded,
+                        label: 'Jumlah Transaksi',
+                        current: _monthlySalesCount.toDouble(),
+                        target: settings.minCompletedSalesCount.toDouble(),
+                        isCurrency: false,
+                        isMet: isCountMet,
+                        accentColor: Colors.purple,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    if (!settings.enableMinSalesLimit &&
+                        !settings.enableMinCompletedSalesLimit)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.block_rounded,
+                              color: Colors.grey,
+                              size: 30,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Program Bonus Sedang Nonaktif',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              'Saat ini belum ada target bonus yang aktif.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(12),

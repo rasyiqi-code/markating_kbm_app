@@ -71,7 +71,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system, // Enable System Dark Mode
 
       routes: {
-        '/': (context) => const SplashScreen(),
+        // '/': (context) => const SplashScreen(), // Moved to onGenerateRoute
         '/auth_wrapper': (context) => const AuthWrapper(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
@@ -91,15 +91,35 @@ class MyApp extends StatelessWidget {
         '/admin/users': (context) => const AdminUserListScreen(),
       },
       onGenerateRoute: (settings) {
-        if (settings.name != null && settings.name!.startsWith('/bio/')) {
-          final userId = settings.name!.split('/').last;
-          if (userId.isNotEmpty) {
-            return MaterialPageRoute(
-              builder: (context) => LinkBioLoadingScreen(userId: userId),
-            );
+        // Debugging Route
+        debugPrint('Routing: ${settings.name}');
+
+        final uri = Uri.parse(settings.name ?? '');
+
+        // 1. Check for Bio Link
+        if (uri.pathSegments.isNotEmpty &&
+            uri.pathSegments.first == 'bio') { // Removed length > 1 strict check to see if it catches partials
+          if (uri.pathSegments.length > 1) {
+             final userId = uri.pathSegments[1];
+             if (userId.isNotEmpty) {
+               return MaterialPageRoute(
+                 builder: (context) => LinkBioLoadingScreen(userId: userId),
+               );
+             }
           }
         }
-        return null;
+
+        // 2. Default to Splash Screen for root '/'
+        if (settings.name == '/' || settings.name == null) {
+           return MaterialPageRoute(builder: (context) => const SplashScreen());
+        }
+
+        // 3. Fallback for unknown routes (to prevent dropping to null/error silently)
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            body: Center(child: Text('Page Not Found: ${settings.name}')),
+          ),
+        );
       },
       builder: (context, child) {
         return ResponsiveWebLayout(child: child ?? const SizedBox());

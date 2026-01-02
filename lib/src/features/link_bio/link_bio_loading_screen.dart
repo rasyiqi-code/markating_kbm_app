@@ -21,10 +21,16 @@ class LinkBioLoadingScreen extends StatelessWidget {
           if (userSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (userSnapshot.hasError ||
-              !userSnapshot.hasData ||
-              userSnapshot.data == null) {
-            return const Center(child: Text('User Not Found'));
+          if (userSnapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('Error: ${userSnapshot.error}'),
+              ),
+            );
+          }
+          if (!userSnapshot.hasData || userSnapshot.data == null) {
+            return const Center(child: Text('User Not Found (Empty Data)'));
           }
 
           final user = userSnapshot.data!;

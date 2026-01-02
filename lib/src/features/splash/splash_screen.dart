@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,6 +12,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -26,19 +28,27 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate after delay
-    Future.delayed(const Duration(seconds: 3), () {
+    // Navigate after delay using Timer
+    _timer = Timer(const Duration(seconds: 3), () {
       _checkAuthAndNavigate();
     });
   }
 
   Future<void> _checkAuthAndNavigate() async {
     if (!mounted) return;
+    
+    // Check if SplashScreen is still best route (e.g. hasn't been covered by deep link)
+    if (ModalRoute.of(context)?.isCurrent == false) {
+      debugPrint('SplashScreen: Not current route, skipping redirect.');
+      return;
+    }
+
     Navigator.of(context).pushReplacementNamed('/auth_wrapper');
   }
 
   @override
   void dispose() {
+    _timer?.cancel(); // Cancel timer to prevent unwanted redirect
     _controller.dispose();
     super.dispose();
   }
@@ -90,7 +100,7 @@ class _SplashScreenState extends State<SplashScreen>
             right: 0,
             child: Center(
               child: Text(
-                'v1.1.0',
+                'v1.1.1',
                 style: TextStyle(
                   color: Colors.grey[500],
                   fontSize: 12,

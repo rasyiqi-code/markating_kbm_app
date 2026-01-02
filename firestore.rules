@@ -1,8 +1,21 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Default Rule: Require Auth
     match /{document=**} {
       allow read, write: if request.auth != null;
+    }
+    
+    // Public Access for Link Bio
+    match /links/{linkId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+    }
+    
+    // Public Access for User Profiles (for Bio resolution)
+    match /users/{userId} {
+      allow read: if true; // Public can read user data (name/photo)
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:markating_kbm_app/src/core/models/global_settings_model.dart';
 import 'package:markating_kbm_app/src/core/models/product_model.dart';
 import 'package:markating_kbm_app/src/core/models/sale_model.dart';
-import 'package:markating_kbm_app/src/core/services/storage_service.dart';
-import 'package:image_picker/image_picker.dart';
+// import 'package:markating_kbm_app/src/core/services/storage_service.dart';
+// import 'package:image_picker/image_picker.dart';
 
 import 'package:markating_kbm_app/src/core/services/auth_service.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
@@ -13,10 +13,12 @@ import 'package:markating_kbm_app/src/core/models/notification_model.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:markating_kbm_app/src/core/utils/app_formatters.dart';
 import 'package:markating_kbm_app/src/core/utils/currency_input_formatter.dart';
-import 'package:flutter/services.dart';
+// import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:markating_kbm_app/src/features/sales/widgets/product_picker_field.dart';
 import 'package:markating_kbm_app/src/features/sales/widgets/markup_input_field.dart';
+import 'package:markating_kbm_app/src/features/sales/widgets/sales_text_field.dart';
+import 'package:markating_kbm_app/src/features/sales/widgets/transaction_proof_input.dart';
 
 class SalesEntryR2Screen extends StatefulWidget {
   const SalesEntryR2Screen({super.key});
@@ -30,7 +32,6 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
 
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  bool _isUploadingProof = false;
   String? _transactionProofUrl;
   String _agentName = '';
 
@@ -162,14 +163,18 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
             _settings!.minCompletedSalesCount; // Shared count target
 
         // Condition A: Crosses Nominal
-        bool crossesNominal =
-            (_monthlySalesTotal < targetNominal) &&
-            ((_monthlySalesTotal + total) >= targetNominal);
+        bool crossesNominal = false;
+        if (_settings!.enableMinSalesLimit) {
+          crossesNominal = (_monthlySalesTotal < targetNominal) &&
+              ((_monthlySalesTotal + total) >= targetNominal);
+        }
 
         // Condition B: Crosses Count
-        bool crossesCount =
-            (_monthlySalesCount < targetCount) &&
-            ((_monthlySalesCount + 1) >= targetCount);
+        bool crossesCount = false;
+        if (_settings!.enableMinCompletedSalesLimit) {
+          crossesCount = (_monthlySalesCount < targetCount) &&
+              ((_monthlySalesCount + 1) >= targetCount);
+        }
 
         if (crossesNominal || crossesCount) {
           _pulsaBonusAmount = _settings!.pulsaBonusAmountR2;
@@ -184,39 +189,7 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _pickAndUploadProof() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      if (!mounted) return;
-      setState(() => _isUploadingProof = true);
-      try {
-        final storage = Provider.of<StorageService>(context, listen: false);
-        final bytes = await pickedFile.readAsBytes();
-        final filename =
-            'transaction_proof_${DateTime.now().millisecondsSinceEpoch}_${pickedFile.name}';
-        final url = await storage.uploadBytes(bytes, filename, 'transactions');
-
-        if (!mounted) return;
-
-        setState(() {
-          _transactionProofUrl = url;
-          _isUploadingProof = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bukti transaksi berhasil diunggah!')),
-        );
-      } catch (e) {
-        if (mounted) {
-          setState(() => _isUploadingProof = false);
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Gagal mengunggah: $e')));
-        }
-      }
-    }
-  }
 
   Future<void> _submitSale() async {
     if (!_formKey.currentState!.validate()) return;
@@ -435,16 +408,16 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
               _buildSectionTitle('Detail Pesanan'),
               const SizedBox(height: 16),
 
-              _buildTextField(
-                _mitraController,
-                'Nama Penerbit Kampus/Swasta',
-                Icons.business_rounded,
+              SalesTextField(
+                controller: _mitraController,
+                label: 'Nama Penerbit Kampus/Swasta',
+                icon: Icons.business_rounded,
               ),
               const SizedBox(height: 16),
-              _buildTextField(
-                _judulLayoutController,
-                'Judul Naskah Layout / Desain Cover',
-                Icons.design_services_outlined,
+              SalesTextField(
+                controller: _judulLayoutController,
+                label: 'Judul Naskah Layout / Desain Cover',
+                icon: Icons.design_services_outlined,
               ),
               const SizedBox(height: 16),
               // Logic: Hide Ukuran & Jml Halaman if product is Cover Jasa
@@ -453,18 +426,18 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildTextField(
-                        _ukuranController,
-                        'Ukuran (Naskah/Cetak)',
-                        Icons.aspect_ratio_rounded,
+                      child: SalesTextField(
+                        controller: _ukuranController,
+                        label: 'Ukuran (Naskah/Cetak)',
+                        icon: Icons.aspect_ratio_rounded,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildTextField(
-                        _halamanController,
-                        'Jml Halaman',
-                        Icons.description_outlined,
+                      child: SalesTextField(
+                        controller: _halamanController,
+                        label: 'Jml Halaman',
+                        icon: Icons.description_outlined,
                         keyboardType: TextInputType.number,
                       ),
                     ),
@@ -483,10 +456,10 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: _buildTextField(
-                      _unitPriceController,
-                      'Harga Satuan',
-                      Icons.attach_money_rounded,
+                    child: SalesTextField(
+                      controller: _unitPriceController,
+                      label: 'Harga Satuan',
+                      icon: Icons.attach_money_rounded,
                       keyboardType: TextInputType.number,
                       prefixText: 'Rp ',
                       inputFormatters: [CurrencyInputFormatter()],
@@ -496,10 +469,10 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
                   const SizedBox(width: 16),
                   Expanded(
                     flex: 2,
-                    child: _buildTextField(
-                      _qtyController,
-                      'Jumlah (Judul/Ex)',
-                      Icons.numbers_rounded,
+                    child: SalesTextField(
+                      controller: _qtyController,
+                      label: 'Jumlah (Judul/Ex)',
+                      icon: Icons.numbers_rounded,
                       keyboardType: TextInputType.number,
                       onChanged: (_) => _calculateValues(),
                     ),
@@ -508,10 +481,10 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
               ),
               const SizedBox(height: 16),
 
-              _buildTextField(
-                _totalPriceController,
-                'Total Yang Harus Dibayar',
-                Icons.monetization_on_outlined,
+              SalesTextField(
+                controller: _totalPriceController,
+                label: 'Total Yang Harus Dibayar',
+                icon: Icons.monetization_on_outlined,
                 keyboardType: TextInputType.number,
                 prefixText: 'Rp ',
                 // inputFormatters: [CurrencyInputFormatter()],
@@ -525,9 +498,37 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
                   color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 16,
                 ),
-                decoration: _inputDecoration(
-                  'Status Pembayaran',
-                  Icons.payment_outlined,
+                decoration: InputDecoration(
+                  labelText: 'Status Pembayaran',
+                  labelStyle: GoogleFonts.outfit(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.payment_outlined,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppTheme.primaryColor,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).inputDecorationTheme.fillColor ??
+                      Colors.grey[50],
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 20,
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(value: 'DP', child: Text('DP (Uang Muka)')),
@@ -555,10 +556,10 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
 
               if (_paymentStatus == 'DP') ...[
                 const SizedBox(height: 16),
-                _buildTextField(
-                  _dpAmountController,
-                  'Jumlah DP yang Dibayar',
-                  Icons.payments_outlined,
+                SalesTextField(
+                  controller: _dpAmountController,
+                  label: 'Jumlah DP yang Dibayar',
+                  icon: Icons.payments_outlined,
                   keyboardType: TextInputType.number,
                   prefixText: 'Rp ',
                   inputFormatters: [CurrencyInputFormatter()],
@@ -600,64 +601,13 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
               const SizedBox(height: 24),
               _buildSectionTitle('Bukti Transaksi'),
               const SizedBox(height: 12),
-              GestureDetector(
-                onTap: _pickAndUploadProof,
-                child: Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).cardColor, // Replaces Colors.grey[100]
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                    image: _transactionProofUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(_transactionProofUrl ?? ''),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: _transactionProofUrl == null
-                      ? _isUploadingProof
-                            ? const Center(child: CircularProgressIndicator())
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.cloud_upload_outlined,
-                                    size: 40,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant, // Colors.grey[600]
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Tap untuk unggah bukti transaksi',
-                                    style: GoogleFonts.outfit(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant, // Colors.grey[600]
-                                    ),
-                                  ),
-                                ],
-                              )
-                      : null,
-                ),
+              TransactionProofInput(
+                themeColor: color,
+                initialUrl: _transactionProofUrl,
+                onProofUploaded: (url) {
+                  setState(() => _transactionProofUrl = url);
+                },
               ),
-              if (_transactionProofUrl != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: TextButton.icon(
-                    onPressed: _pickAndUploadProof,
-                    icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('Ganti Bukti Transaksi'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.secondaryColor,
-                    ),
-                  ),
-                ),
-
               const SizedBox(height: 48),
               SizedBox(
                 height: 56,
@@ -704,60 +654,9 @@ class _SalesEntryR2ScreenState extends State<SalesEntryR2Screen> {
     );
   }
 
-  InputDecoration _inputDecoration(
-    String label,
-    IconData icon, {
-    String? prefixText,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: GoogleFonts.outfit(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
-      prefixText: prefixText,
-      prefixStyle: GoogleFonts.outfit(
-        color: Theme.of(context).colorScheme.onSurface,
-        fontWeight: FontWeight.bold,
-      ),
-      prefixIcon: Icon(icon, color: Colors.grey[600]),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-      ),
-      filled: true,
-      fillColor:
-          Theme.of(context).inputDecorationTheme.fillColor ?? Colors.grey[50],
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-    );
-  }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    TextInputType keyboardType = TextInputType.text,
-    String? prefixText,
-    List<TextInputFormatter>? inputFormatters,
-    Function(String)? onChanged,
-  }) {
-    return TextFormField(
-      controller: controller,
-      style: GoogleFonts.outfit(fontSize: 16),
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      decoration: _inputDecoration(label, icon, prefixText: prefixText),
-      onChanged: onChanged,
-      validator: (v) => v!.isEmpty ? 'Wajib diisi ya' : null,
-    );
-  }
+
+
 
   Widget _buildProductDropdown(Color color) {
     return ProductPickerField(
