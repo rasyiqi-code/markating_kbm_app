@@ -315,6 +315,33 @@ class ProductDetailScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+                    const SizedBox(height: 12),
+                    if (product.marketingKitUrl != null)
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/poster_generator',
+                            arguments: product.marketingKitUrl,
+                          );
+                        },
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        label: const Text('Personalisasi Poster Ini'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor.withValues(
+                            alpha: 0.1,
+                          ),
+                          foregroundColor: AppTheme.primaryColor,
+                          elevation: 0,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ),
+                      ),
 
                     const SizedBox(height: 16),
 

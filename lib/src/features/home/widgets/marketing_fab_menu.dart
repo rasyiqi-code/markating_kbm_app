@@ -53,6 +53,21 @@ class MarketingFabMenu extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFabOption(
+                  context,
+                  'Poster Generator',
+                  Icons.auto_awesome_rounded,
+                  Colors.orange,
+                  '/poster_generator',
+                ),
+              ),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
         ],
       ),
     );

@@ -8,6 +8,7 @@ import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:markating_kbm_app/src/features/auth/login_screen.dart';
 import 'package:markating_kbm_app/src/features/auth/register_screen.dart';
 import 'package:markating_kbm_app/src/features/home/main_screen.dart';
+import 'package:markating_kbm_app/src/features/home/poster_generator_screen.dart';
 
 import 'package:markating_kbm_app/src/features/admin/product_management_screen.dart';
 import 'package:markating_kbm_app/src/features/admin/add_edit_product_screen.dart';
@@ -89,6 +90,7 @@ class MyApp extends StatelessWidget {
             const AdminTransactionsScreen(houseType: 2),
         '/admin/withdrawals': (context) => const AdminWithdrawalsScreen(),
         '/admin/users': (context) => const AdminUserListScreen(),
+        '/poster_generator': (context) => const PosterGeneratorScreen(),
       },
       onGenerateRoute: (settings) {
         // Debugging Route
@@ -97,21 +99,21 @@ class MyApp extends StatelessWidget {
         final uri = Uri.parse(settings.name ?? '');
 
         // 1. Check for Bio Link
-        if (uri.pathSegments.isNotEmpty &&
-            uri.pathSegments.first == 'bio') { // Removed length > 1 strict check to see if it catches partials
+        if (uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'bio') {
+          // Removed length > 1 strict check to see if it catches partials
           if (uri.pathSegments.length > 1) {
-             final userId = uri.pathSegments[1];
-             if (userId.isNotEmpty) {
-               return MaterialPageRoute(
-                 builder: (context) => LinkBioLoadingScreen(userId: userId),
-               );
-             }
+            final userId = uri.pathSegments[1];
+            if (userId.isNotEmpty) {
+              return MaterialPageRoute(
+                builder: (context) => LinkBioLoadingScreen(userId: userId),
+              );
+            }
           }
         }
 
         // 2. Default to Splash Screen for root '/'
         if (settings.name == '/' || settings.name == null) {
-           return MaterialPageRoute(builder: (context) => const SplashScreen());
+          return MaterialPageRoute(builder: (context) => const SplashScreen());
         }
 
         // 3. Fallback for unknown routes (to prevent dropping to null/error silently)
