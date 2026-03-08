@@ -8,48 +8,20 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:556031650608:android:1b9b06871daef32a6cb6f5",
-        "android_client_info": {
-          "package_name": "com.example.markating_kbm_app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "556031650608-7tbf6vq65ud8894ni08npv134a02ohsj.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBJkOyKdd-G6FzagS53WHvbEqnnUI5T3Vk"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "556031650608-7tbf6vq65ud8894ni08npv134a02ohsj.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "556031650608-0m5073mtf14vsdeib04f5sirqootdhbh.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.kbmgroup.marketing"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:556031650608:android:8080279ae7da0b826cb6f5",
         "android_client_info": {
           "package_name": "com.kbmgroup.marketing"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "556031650608-lv89hj6ilvusj0b8sh42dhtn607i3at7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kbmgroup.marketing",
+            "certificate_hash": "3618084b1b0b9fd985280b040d94de19fb355f1f"
+          }
+        },
         {
           "client_id": "556031650608-7tbf6vq65ud8894ni08npv134a02ohsj.apps.googleusercontent.com",
           "client_type": 3
