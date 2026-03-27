@@ -4,6 +4,7 @@ import 'package:markating_kbm_app/src/core/models/notification_model.dart';
 import 'package:markating_kbm_app/src/core/models/sale_model.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/services/storage_service.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 import 'package:provider/provider.dart';
 
 class TransactionUpdateDialog extends StatefulWidget {
@@ -169,8 +170,8 @@ class _TransactionUpdateDialogState extends State<TransactionUpdateDialog> {
           if (_hasProof && _currentProofUrl != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                _currentProofUrl!,
+              child: NetworkImageWeb(
+                imageUrl: _currentProofUrl!,
                 height: 150,
                 fit: BoxFit.cover,
               ),

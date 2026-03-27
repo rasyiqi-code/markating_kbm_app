@@ -439,8 +439,8 @@ class _LoginScreenState extends State<LoginScreen>
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
-                                icon: Image.network(
-                                  'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
+                                icon: Image.asset(
+                                  'assets/google_logo.png',
                                   height: 24,
                                 ),
                                 label: const Text(

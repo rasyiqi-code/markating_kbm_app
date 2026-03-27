@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:markating_kbm_app/src/core/models/product_model.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 import 'package:markating_kbm_app/src/features/admin/add_edit_product_screen.dart';
 
 class AdminProductCard extends StatelessWidget {
@@ -60,36 +61,45 @@ class AdminProductCard extends StatelessWidget {
                       color: houseType == 1
                           ? AppTheme.primaryColor.withValues(alpha: 0.1)
                           : AppTheme.secondaryColor.withValues(alpha: 0.1),
-                      image:
-                          (product.marketingKitUrl != null &&
-                              product.marketingKitUrl!.isNotEmpty)
-                          ? DecorationImage(
-                              image: NetworkImage(product.marketingKitUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : (product.imageUrl != null &&
-                                product.imageUrl!.isNotEmpty)
-                          ? DecorationImage(
-                              image: NetworkImage(product.imageUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
                     ),
-                    child:
-                        ((product.marketingKitUrl == null ||
-                                product.marketingKitUrl!.isEmpty) &&
-                            (product.imageUrl == null ||
-                                product.imageUrl!.isEmpty))
-                        ? Icon(
-                            houseType == 1
-                                ? Icons.menu_book_rounded
-                                : Icons.brush_rounded,
-                            color: houseType == 1
-                                ? AppTheme.primaryColor
-                                : AppTheme.secondaryColor,
-                            size: 32,
-                          )
-                        : null,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if ((product.marketingKitUrl != null &&
+                                  product.marketingKitUrl!.isNotEmpty) ||
+                              (product.imageUrl != null &&
+                                  product.imageUrl!.isNotEmpty))
+                            NetworkImageWeb(
+                              imageUrl: (product.marketingKitUrl != null &&
+                                      product.marketingKitUrl!.isNotEmpty)
+                                  ? product.marketingKitUrl!
+                                  : product.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorWidget: const Center(
+                                child: Icon(
+                                  Icons.broken_image_rounded,
+                                  color: Colors.grey,
+                                  size: 24,
+                                ),
+                              ),
+                            )
+                          else
+                            Center(
+                              child: Icon(
+                                houseType == 1
+                                    ? Icons.menu_book_rounded
+                                    : Icons.brush_rounded,
+                                color: houseType == 1
+                                    ? AppTheme.primaryColor
+                                    : AppTheme.secondaryColor,
+                                size: 32,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),

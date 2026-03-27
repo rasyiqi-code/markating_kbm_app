@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:markating_kbm_app/src/core/models/link_bio_model.dart';
 import 'package:markating_kbm_app/src/core/models/user_model.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LinkBioPreviewScreen extends StatefulWidget {
@@ -152,24 +153,22 @@ class _LinkBioPreviewScreenState extends State<LinkBioPreviewScreen> {
                                   ),
                                   child: ClipOval(
                                     child: widget.user.photoUrl != null
-                                        ? Image.network(
-                                            widget.user.photoUrl!,
+                                        ? NetworkImageWeb(
+                                            imageUrl: widget.user.photoUrl!,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              debugPrint('Image Load Error: $error');
-                                              return Center(
-                                                child: Text(
-                                                  displayName.isNotEmpty
-                                                      ? displayName[0].toUpperCase()
-                                                      : '?',
-                                                  style: GoogleFonts.outfit(
-                                                    fontSize: 36,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: AppTheme.primaryColor,
-                                                  ),
+                                            errorWidget: Center(
+                                              child: Text(
+                                                displayName.isNotEmpty
+                                                    ? displayName[0]
+                                                        .toUpperCase()
+                                                    : '?',
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 36,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.primaryColor,
                                                 ),
-                                              );
-                                            },
+                                              ),
+                                            ),
                                           )
                                         : Center(
                                             child: Text(

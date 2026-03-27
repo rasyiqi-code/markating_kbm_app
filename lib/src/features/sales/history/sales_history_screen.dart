@@ -13,6 +13,7 @@ import 'package:markating_kbm_app/src/core/services/auth_service.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:markating_kbm_app/src/core/utils/app_formatters.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 import 'package:markating_kbm_app/src/core/models/notification_model.dart';
 import 'package:provider/provider.dart';
 
@@ -737,22 +738,20 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                       const SizedBox(height: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          sale.transactionProofUrl!,
+                        child: NetworkImageWeb(
+                          imageUrl: sale.transactionProofUrl!,
                           height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              height: 200,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest, // Colors.grey[200]
-                              child: const Center(
-                                child: Text('Gagal memuat gambar'),
-                              ),
-                            );
-                          },
+                          errorWidget: Container(
+                            height: 200,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest, // Colors.grey[200]
+                            child: const Center(
+                              child: Text('Gagal memuat gambar'),
+                            ),
+                          ),
                         ),
                       ),
                       const Divider(height: 32),

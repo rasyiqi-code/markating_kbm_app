@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:markating_kbm_app/src/core/services/storage_service.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 
 class TransactionProofInput extends StatefulWidget {
   final Function(String url) onProofUploaded;
@@ -73,6 +74,7 @@ class _TransactionProofInputState extends State<TransactionProofInput> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: _pickAndUploadProof,
           child: Container(
             height: 150,
@@ -81,38 +83,41 @@ class _TransactionProofInputState extends State<TransactionProofInput> {
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade300),
-              image: _proofUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(_proofUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
             ),
-            child: _proofUrl == null
-                ? _isUploading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.cloud_upload_outlined,
-                            size: 40,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_proofUrl != null)
+                    NetworkImageWeb(imageUrl: _proofUrl!, fit: BoxFit.cover),
+                  if (_proofUrl == null)
+                    _isUploading
+                        ? const Center(child: CircularProgressIndicator())
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.cloud_upload_outlined,
+                                size: 40,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Tap untuk unggah bukti transaksi',
+                                style: GoogleFonts.outfit(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tap untuk unggah bukti transaksi',
-                            style: GoogleFonts.outfit(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      )
-                : null,
+                ],
+              ),
+            ),
           ),
         ),
         if (_proofUrl != null)

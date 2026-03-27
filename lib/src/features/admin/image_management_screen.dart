@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 
 class ImageManagementScreen extends StatefulWidget {
   final bool isPicker;
@@ -218,6 +219,7 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
                   final isSelected = _selectedKeys.contains(item.key);
 
                   return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onLongPress: () {
                       if (!widget.isPicker) _toggleSelection(item.key);
                     },
@@ -235,7 +237,7 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
                           context: context,
                           builder: (ctx) => Dialog(
                             child: InteractiveViewer(
-                              child: Image.network(item.url),
+                            child: NetworkImageWeb(imageUrl: item.url),
                             ),
                           ),
                         );
@@ -246,17 +248,16 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
                         Positioned.fill(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              item.url,
+                            child: NetworkImageWeb(
+                              imageUrl: item.url,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    color: Colors.grey[200],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
+                              errorWidget: Container(
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ),
                           ),
                         ),

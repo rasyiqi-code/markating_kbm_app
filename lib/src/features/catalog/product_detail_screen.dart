@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   const ProductDetailScreen({super.key});
@@ -68,45 +69,39 @@ class ProductDetailScreen extends StatelessWidget {
                 ),
                 child:
                     (product.imageUrl != null && product.imageUrl!.isNotEmpty)
-                    ? Image.network(
-                        product.imageUrl!,
+                    ? NetworkImageWeb(
+                        imageUrl: product.imageUrl!,
                         width: double.infinity,
                         fit: BoxFit.fitWidth, // Natural height, full width
-                        cacheWidth: 1080, // Optimized resolution
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            height: 200,
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: Icon(
-                                Icons.broken_image_rounded,
-                                size: 64,
-                                color: Colors.grey,
-                              ),
+                        errorWidget: Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(
+                              Icons.broken_image_rounded,
+                              size: 64,
+                              color: Colors.grey,
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       )
                     : (product.marketingKitUrl != null &&
                           product.marketingKitUrl!.isNotEmpty)
-                    ? Image.network(
-                        product.marketingKitUrl!,
+                    ? NetworkImageWeb(
+                        imageUrl: product.marketingKitUrl!,
                         width: double.infinity,
                         fit: BoxFit.fitWidth, // Natural height, full width
-                        cacheWidth: 1080, // Optimized resolution
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            height: 200,
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: Icon(
-                                Icons.broken_image_rounded,
-                                size: 64,
-                                color: Colors.grey,
-                              ),
+                        errorWidget: Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(
+                              Icons.broken_image_rounded,
+                              size: 64,
+                              color: Colors.grey,
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       )
                     : null,
               ),

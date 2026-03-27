@@ -58,12 +58,8 @@ class StorageService {
     // Since I don't have the public domain prefix, I will assume presigned for now
     // or try to construct a URL if the user provides a public domain later.
 
-    // For now, let's return a long-lived presigned URL (e.g. 7 days).
-    return await _minio.presignedGetObject(
-      _bucketName,
-      objectName,
-      expires: 60 * 60 * 24 * 7, // 7 days
-    );
+    // Return the permanent URL using the custom domain
+    return 'https://poster.librarypenerbitkbm.science/$objectName';
   }
 
   /// Uploads data directly (for web or memory bytes)
@@ -81,11 +77,7 @@ class StorageService {
 
     await _minio.putObject(_bucketName, objectName, stream, size: bytes.length);
 
-    return await _minio.presignedGetObject(
-      _bucketName,
-      objectName,
-      expires: 60 * 60 * 24 * 7,
-    );
+    return 'https://poster.librarypenerbitkbm.science/$objectName';
   }
 
   Future<void> deleteFileByUrl(String url) async {
@@ -144,11 +136,7 @@ class StorageService {
           if (obj.key == null) return null;
 
           try {
-            final url = await _minio.presignedGetObject(
-              _bucketName,
-              obj.key!,
-              expires: 60 * 60, // 1 hour for preview
-            );
+            final url = 'https://poster.librarypenerbitkbm.science/${obj.key!}';
 
             return StorageItem(
               key: obj.key!,

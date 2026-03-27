@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:markating_kbm_app/src/core/models/product_model.dart';
 import 'package:markating_kbm_app/src/core/services/firestore_service.dart';
 import 'package:markating_kbm_app/src/core/services/storage_service.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 import 'package:markating_kbm_app/src/features/admin/image_management_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -159,8 +160,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 8),
-                          Image.network(
-                            _uploadedImageUrl!,
+                          NetworkImageWeb(
+                            imageUrl: _uploadedImageUrl!,
                             height: 150,
                             fit: BoxFit.cover,
                           ),

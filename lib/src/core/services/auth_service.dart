@@ -83,19 +83,18 @@ class AuthService {
     return cred;
   }
 
-  Future<UserCredential?> signInWithGoogle() async {
-    // Client ID from google-services.json (client_type: 3)
-    // Required for Windows/Web support, and as serverClientId on Android/iOS to get ID token
-    const String webClientId =
-        '556031650608-7tbf6vq65ud8894ni08npv134a02ohsj.apps.googleusercontent.com';
+  // Single instance to avoid "multiple times" warning on Web
+  late final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb
+        ? '556031650608-7tbf6vq65ud8894ni08npv134a02ohsj.apps.googleusercontent.com'
+        : null,
+    serverClientId: kIsWeb
+        ? null
+        : '556031650608-7tbf6vq65ud8894ni08npv134a02ohsj.apps.googleusercontent.com',
+  );
 
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      // On Android, passing a Web Client ID to `clientId` causes DEVELOPER_ERROR (10).
-      // We only pass it to `clientId` on the Web.
-      clientId: kIsWeb ? webClientId : null,
-      serverClientId: webClientId,
-    );
-    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+  Future<UserCredential?> signInWithGoogle() async {
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
     if (googleUser != null) {
       final GoogleSignInAuthentication googleAuth =

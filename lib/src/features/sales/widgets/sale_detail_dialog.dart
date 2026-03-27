@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:markating_kbm_app/src/core/models/sale_model.dart';
 import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 import 'package:markating_kbm_app/src/features/sales/widgets/transaction_timeline.dart';
 
 class SaleDetailDialog extends StatelessWidget {
@@ -144,18 +145,18 @@ class SaleDetailDialog extends StatelessWidget {
                             child: Stack(
                               fit: StackFit.loose,
                               children: [
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  child: InteractiveViewer(
-                                    minScale: 0.5,
-                                    maxScale: 4.0,
-                                    child: Image.network(
-                                      sale.transactionProofUrl!,
-                                      fit: BoxFit.contain,
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    child: InteractiveViewer(
+                                      minScale: 0.5,
+                                      maxScale: 4.0,
+                                      child: NetworkImageWeb(
+                                        imageUrl: sale.transactionProofUrl!,
+                                        fit: BoxFit.contain,
+                                      ),
                                     ),
                                   ),
-                                ),
                                 Positioned(
                                   top: 16,
                                   right: 16,
@@ -180,17 +181,18 @@ class SaleDetailDialog extends StatelessWidget {
                           ),
                         );
                       },
-                      child: Container(
+                      child: NetworkImageWeb(
+                        imageUrl: sale.transactionProofUrl!,
                         height: 200,
                         width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Theme.of(context).dividerColor,
-                          ), // Colors.grey.shade300
-                          image: DecorationImage(
-                            image: NetworkImage(sale.transactionProofUrl!),
-                            fit: BoxFit.cover,
+                        fit: BoxFit.cover,
+                        errorWidget: Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(
+                              Icons.broken_image_rounded,
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
                       ),

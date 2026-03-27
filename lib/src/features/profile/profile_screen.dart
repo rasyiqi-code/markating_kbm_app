@@ -8,6 +8,7 @@ import 'package:markating_kbm_app/src/core/theme/app_theme.dart';
 import 'package:markating_kbm_app/src/features/admin/image_management_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:markating_kbm_app/src/core/services/storage_service.dart';
+import 'package:markating_kbm_app/src/core/utils/network_image_web_helper.dart';
 import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -63,25 +64,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 2,
               ),
             ),
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: Colors.transparent,
-              foregroundImage: _currentUser?.photoUrl != null
-                  ? NetworkImage(_currentUser!.photoUrl!)
-                  : null,
-              onForegroundImageError: _currentUser?.photoUrl != null
-                  ? (exception, stackTrace) {
-                      // Silently fails to child (initials)
-                    }
-                  : null,
-              child: Text(
-                (_currentUser?.email ?? 'User').substring(0, 1).toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
+            child: ClipOval(
+              child: _currentUser?.photoUrl != null
+                  ? NetworkImageWeb(
+                      imageUrl: _currentUser!.photoUrl!,
+                      fit: BoxFit.cover,
+                    )
+                  : Center(
+                      child: Text(
+                        (_currentUser?.email ?? 'User')
+                            .substring(0, 1)
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 16),
@@ -490,6 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Profile Image Picker
                     Center(
                       child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: pickImage,
                         child: Stack(
                           children: [
@@ -505,32 +506,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   width: 2,
                                 ),
                               ),
-                              child: CircleAvatar(
-                                radius: 48,
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest, // Colors.grey[100]
-                                foregroundImage: _newProfileImageBytes != null
-                                    ? MemoryImage(_newProfileImageBytes!)
-                                    : (_currentUser?.photoUrl != null
-                                              ? NetworkImage(
-                                                  _currentUser!.photoUrl!,
-                                                )
-                                              : null)
-                                          as ImageProvider?,
-                                child:
-                                    _newProfileImageBytes == null &&
-                                        _currentUser?.photoUrl == null
-                                    ? Icon(
-                                        Icons.person,
-                                        size: 40,
-                                        color: Theme.of(context).iconTheme.color
-                                            ?.withValues(
-                                              alpha: 0.5,
-                                            ), // Colors.grey[400]
+                                child: _newProfileImageBytes != null
+                                    ? Image.memory(
+                                        _newProfileImageBytes!,
+                                        fit: BoxFit.cover,
                                       )
-                                    : null,
-                              ),
+                                    : (_currentUser?.photoUrl != null
+                                        ? NetworkImageWeb(
+                                            imageUrl: _currentUser!.photoUrl!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Icon(
+                                            Icons.person,
+                                            size: 40,
+                                            color: Theme.of(context)
+                                                .iconTheme
+                                                .color
+                                                ?.withValues(
+                                                  alpha: 0.5,
+                                                ), // Colors.grey[400]
+                                          )),
                             ),
                             Positioned(
                               bottom: 0,
