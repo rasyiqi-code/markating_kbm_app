@@ -1,3 +1,4 @@
+import 'dart:js_interop';
 import 'dart:ui_web' as ui;
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
@@ -38,7 +39,6 @@ class NetworkImageWeb extends StatelessWidget {
 
     final String viewID = 'img-view-${finalUrl.hashCode}';
 
-    // ignore: undefined_prefixed_name
     ui.platformViewRegistry.registerViewFactory(viewID, (int viewId) {
       final web.HTMLImageElement img =
           web.document.createElement('img') as web.HTMLImageElement;
@@ -49,6 +49,12 @@ class NetworkImageWeb extends StatelessWidget {
       
       // Add crossOrigin to help with R2/CORS if needed
       img.crossOrigin = 'anonymous';
+      
+      // Fallback for CORS issues if image fails to load with anonymous
+      img.onerror = ((web.Event e) {
+        img.crossOrigin = ''; // Reset CORS and try again as normal
+        img.src = finalUrl;
+      }.toJS);
 
       return img;
     });

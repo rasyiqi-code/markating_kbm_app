@@ -57,6 +57,20 @@ flutter build web --release
 firebase deploy --only hosting
 ```
 
+## 🔥 Firebase Configuration (For Open Source Usage)
+
+This repository does **not** include the Firebase credential files (`google-services.json` and `firebase_options.dart`) for security reasons.
+
+If you are cloning this repository to use for your own project, you must reconfigure Firebase:
+1. Install Firebase CLI: `npm install -g firebase-tools`
+2. Login to your Firebase account: `firebase login`
+3. Activate FlutterFire CLI: `dart pub global activate flutterfire_cli`
+4. Run configuration to generate credentials for your own Firebase project:
+   ```bash
+   flutterfire configure
+   ```
+   *This will automatically generate `lib/firebase_options.dart` and `android/app/google-services.json`.*
+
 ## 🔑 Google Sign-In Configuration
 
 For Google Sign-In to work, the hosting domain requires specific configuration in Google Cloud Console:
